@@ -24,7 +24,7 @@ def synthesize(text: str, api_key: str, language_code: str = "en-IN", speaker: s
                 "inputs": [text],
                 "target_language_code": language_code,
                 "speaker": speaker,
-                "model": "bulbul:v1",
+                "model": "bulbul:v2",
                 "output_audio_codec": "wav",
             },
             timeout=30,
