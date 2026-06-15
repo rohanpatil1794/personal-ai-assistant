@@ -3,7 +3,7 @@ from pydantic import ValidationError
 
 
 class Settings(BaseSettings):
-    GEMINI_API_KEY: str
+    GROQ_API_KEY: str
     SARVAM_API_KEY: str
     HA_URL: str
     HA_TOKEN: str
@@ -36,5 +36,5 @@ def missing_fields() -> list[str]:
     from dotenv import dotenv_values
 
     values = dotenv_values(".env")
-    required = ["GEMINI_API_KEY", "SARVAM_API_KEY", "HA_URL", "HA_TOKEN"]
+    required = ["GROQ_API_KEY", "SARVAM_API_KEY", "HA_URL", "HA_TOKEN"]
     return [f for f in required if not values.get(f) and not os.environ.get(f)]

@@ -48,14 +48,14 @@ def _launch_app() -> None:
         return
 
     from integrations.ha_client import HAClient
-    from services.gemini import GeminiClient
+    from services.llm import LLMClient
     from core.conversation import ConversationManager
     from core.assistant import Assistant
     from ui.main_window import MainWindow
 
     ha = HAClient(settings.HA_URL, settings.HA_TOKEN)
-    gemini = GeminiClient(settings.GEMINI_API_KEY)
-    conv = ConversationManager(gemini, ha)
+    llm = LLMClient(settings.GROQ_API_KEY)
+    conv = ConversationManager(llm, ha)
 
     window = MainWindow(
         on_trigger=lambda: None,    # wired below after assistant is created
