@@ -7,7 +7,7 @@ from utils.logger import get_logger
 
 log = get_logger(__name__)
 
-MODEL_NAME = "gemini-2.0-flash"
+MODEL_NAME = "gemini-1.5-flash"
 
 
 class GeminiClient:
