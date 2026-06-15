@@ -17,7 +17,7 @@ def transcribe(wav_bytes: bytes, api_key: str, language_code: str = "en-IN") -> 
             SARVAM_STT_URL,
             headers={"api-subscription-key": api_key},
             files={"file": ("audio.wav", wav_bytes, "audio/wav")},
-            data={"model": "saarika:v2", "language_code": language_code},
+            data={"model": "saarika:v2.5", "language_code": language_code},
             timeout=30,
         )
         resp.raise_for_status()

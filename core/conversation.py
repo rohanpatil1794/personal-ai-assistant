@@ -1,8 +1,9 @@
 """
-Manages the Gemini ChatSession and the two-step tool-call / tool-result exchange.
+Manages the Gemini Chat session and the two-step tool-call / tool-result exchange.
+Uses the new google-genai SDK.
 """
-import json
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 from integrations.ha_client import HAClient
 from services.gemini import GeminiClient
@@ -30,7 +31,7 @@ class ConversationManager:
     def __init__(self, gemini: GeminiClient, ha: HAClient) -> None:
         self._gemini = gemini
         self._ha = ha
-        self._session: genai.ChatSession | None = None
+        self._session: genai.chats.Chat | None = None
 
     def start(self) -> None:
         """Fetch HA entities and start a Gemini chat session."""
@@ -38,7 +39,7 @@ class ConversationManager:
             entities = self._ha.get_states()
             entity_lines = "\n".join(
                 f"- {e['entity_id']} ({e['name']}): {e['state']}"
-                for e in entities[:150]  # cap to avoid token overflow
+                for e in entities[:150]
             )
         except Exception as e:
             log.warning("conversation: could not fetch HA entities", error=str(e))
@@ -61,33 +62,26 @@ class ConversationManager:
         except Exception as e:
             raise GeminiError(f"Gemini send_message failed: {e}") from e
 
-        # Handle tool call loop (Gemini may chain multiple calls)
+        # Handle tool call loop
         while True:
-            part = response.candidates[0].content.parts[0]
+            candidate = response.candidates[0]
+            part = candidate.content.parts[0]
 
-            if hasattr(part, "function_call") and part.function_call.name:
+            if part.function_call is not None:
                 fc = part.function_call
-                tool_result = self._dispatch_tool(fc.name, dict(fc.args))
+                tool_result = self._dispatch_tool(fc.name, dict(fc.args or {}))
                 log.info("conversation: tool result", tool=fc.name, result=tool_result)
 
                 try:
                     response = self._session.send_message(
-                        genai.protos.Content(
-                            parts=[
-                                genai.protos.Part(
-                                    function_response=genai.protos.FunctionResponse(
-                                        name=fc.name,
-                                        response={"result": tool_result},
-                                    )
-                                )
-                            ],
-                            role="user",
+                        types.Part.from_function_response(
+                            name=fc.name,
+                            response={"result": tool_result},
                         )
                     )
                 except Exception as e:
                     raise GeminiError(f"Gemini tool response failed: {e}") from e
             else:
-                # Plain text reply
                 reply = response.text.strip()
                 log.info("conversation: assistant reply", text=reply[:100])
                 return reply
