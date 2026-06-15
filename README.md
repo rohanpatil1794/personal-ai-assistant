@@ -1,6 +1,6 @@
 # Personal AI Assistant
 
-A Python-based voice AI assistant with Home Assistant integration, powered by Google Gemini and Sarvam speech services.
+A Python-based voice AI assistant with Home Assistant integration, powered by Groq and Sarvam speech services.
 
 ## Features (Phase 1)
 
@@ -19,7 +19,7 @@ A Python-based voice AI assistant with Home Assistant integration, powered by Go
 2. **Configure credentials:**
    Copy `.env.example` to `.env` and fill in your keys:
    ```
-   GEMINI_API_KEY=...
+   GROQ_API_KEY=...
    SARVAM_API_KEY=...
    HA_URL=http://192.168.x.x:8123
    HA_TOKEN=...
