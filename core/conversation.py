@@ -35,9 +35,11 @@ class ConversationManager:
         """Fetch HA entities and initialise the chat session."""
         try:
             entities = self._ha.get_states()
+            useful_domains = {"light", "switch", "climate", "scene", "media_player", "fan", "cover", "input_boolean"}
+            filtered = [e for e in entities if e["entity_id"].split(".")[0] in useful_domains]
             entity_lines = "\n".join(
                 f"- {e['entity_id']} ({e['name']}): {e['state']}"
-                for e in entities[:150]
+                for e in filtered[:80]
             )
         except Exception as e:
             log.warning("conversation: could not fetch HA entities", error=str(e))

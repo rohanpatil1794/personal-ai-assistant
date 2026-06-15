@@ -5,7 +5,7 @@ from utils.logger import get_logger
 
 log = get_logger(__name__)
 
-MODEL_NAME = "llama-3.3-70b-versatile"
+MODEL_NAME = "llama-3.1-8b-instant"
 
 
 class LLMClient:
