@@ -8,7 +8,7 @@ log = get_logger(__name__)
 SARVAM_TTS_URL = "https://api.sarvam.ai/text-to-speech"
 
 
-def synthesize(text: str, api_key: str, language_code: str = "en-IN", speaker: str = "meera") -> bytes:
+def synthesize(text: str, api_key: str, language_code: str = "en-IN", speaker: str = "rahul") -> bytes:
     """
     Send text to Sarvam TTS and return WAV bytes.
     """

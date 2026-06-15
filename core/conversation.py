@@ -87,7 +87,8 @@ class ConversationManager:
         """Route a tool call to the appropriate HA client method."""
         try:
             if name == "get_ha_entities":
-                entities = self._ha.get_states(domain=args.get("domain"))
+                domain = args.get("domain") or None
+                entities = self._ha.get_states(domain=domain)
                 return {"entities": entities}
 
             elif name == "control_ha_entity":
