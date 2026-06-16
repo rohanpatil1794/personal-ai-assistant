@@ -14,6 +14,13 @@ class Settings(BaseSettings):
     TTS_SPEAKER: str = "rahul"
     TTS_LANGUAGE: str = "en-IN"
 
+    # LiveKit — calling module (optional; leave blank to disable)
+    LIVEKIT_URL: str = ""
+    LIVEKIT_API_KEY: str = ""
+    LIVEKIT_API_SECRET: str = ""
+    LIVEKIT_SIP_TRUNK_ID: str = ""
+    CALLING_AGENT_CALLBACK_BASE: str = "http://localhost:8000"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
