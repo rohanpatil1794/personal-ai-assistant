@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
     GOOGLE_CALENDAR_TOKEN: str = "token.json"
     GOOGLE_CALENDAR_CREDENTIALS: str = "credentials.json"
+    TTS_SPEAKER: str = "rahul"
+    TTS_LANGUAGE: str = "en-IN"
 
     model_config = SettingsConfigDict(
         env_file=".env",

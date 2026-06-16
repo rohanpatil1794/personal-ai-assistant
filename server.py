@@ -26,12 +26,16 @@ log = get_logger(__name__)
 
 _settings = None
 _conv: ConversationManager | None = None
+_tts_speaker: str = "rahul"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _settings, _conv
+    global _settings, _conv, _tts_speaker
     _settings = load_settings()
+    _tts_speaker = await run_in_threadpool(
+        tts_service.validate_speaker, _settings.SARVAM_API_KEY, _settings.TTS_SPEAKER, _settings.TTS_LANGUAGE
+    )
     ha = HAClient(_settings.HA_URL, _settings.HA_TOKEN)
     llm = LLMClient(_settings.GROQ_API_KEY)
     swiggy = SwiggyClient(_settings.SWIGGY_ACCESS_TOKEN)
@@ -66,7 +70,7 @@ async def _llm_and_tts(user_text: str) -> AssistantResponse:
 
     try:
         wav_bytes = await run_in_threadpool(
-            tts_service.synthesize, reply, _settings.SARVAM_API_KEY
+            tts_service.synthesize, reply, _settings.SARVAM_API_KEY, _settings.TTS_LANGUAGE, _tts_speaker
         )
     except Exception as e:
         log.error("server: TTS error", error=str(e))

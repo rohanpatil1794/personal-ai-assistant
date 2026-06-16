@@ -8,6 +8,18 @@ log = get_logger(__name__)
 SARVAM_TTS_URL = "https://api.sarvam.ai/text-to-speech"
 
 
+def validate_speaker(api_key: str, speaker: str, language_code: str = "en-IN") -> str:
+    """Test the speaker with a short API call. Returns speaker if valid, falls back to 'rahul'."""
+    speaker = speaker.lower().strip()
+    try:
+        synthesize("hello", api_key, language_code, speaker)
+        log.info("tts: speaker validated", speaker=speaker)
+        return speaker
+    except TTSError:
+        log.warning("tts: speaker not valid, falling back to rahul", speaker=speaker)
+        return "rahul"
+
+
 def synthesize(text: str, api_key: str, language_code: str = "en-IN", speaker: str = "rahul") -> bytes:
     """
     Send text to Sarvam TTS and return WAV bytes.
