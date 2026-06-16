@@ -75,6 +75,7 @@ header {
 .status-dot.thinking  { background: var(--amber); box-shadow: 0 0 7px var(--amber-glow); animation: dot-blink 0.9s ease-in-out infinite; }
 .status-dot.speaking  { background: var(--green); box-shadow: 0 0 7px var(--green-glow); }
 .status-dot.error     { background: var(--red);   box-shadow: 0 0 7px var(--red-glow); }
+.status-dot.armed     { background: rgba(103,232,249,0.5); animation: dot-blink 2.5s ease-in-out infinite; }
 
 @keyframes dot-blink { 0%,100% { opacity:1; } 50% { opacity:.3; } }
 
@@ -210,6 +211,10 @@ main {
   border-color: var(--red);
   box-shadow: 0 0 18px var(--red-glow);
 }
+.sphere-scene:has(#sphere.armed) .sphere-ring {
+  border-color: rgba(103,232,249,0.3);
+  box-shadow: 0 0 10px rgba(103,232,249,0.15);
+}
 
 @keyframes ring-spin {
   to { transform: rotate(360deg); }
@@ -256,6 +261,20 @@ main {
   background: radial-gradient(circle at 35% 28%,
     #ffe4e4 0%, #fca5a5 18%, #ef4444 42%, #b91c1c 65%, #120000 100%);
   box-shadow: 0 0 60px var(--red-glow), inset 0 -24px 48px rgba(0,0,0,0.45);
+}
+#sphere.armed {
+  background: radial-gradient(circle at 35% 28%,
+    #cce0ff 0%, #7ab5ff 18%, #3b82f6 42%, #1d4ed8 65%, #0a1628 100%);
+  box-shadow:
+    0 0 30px rgba(79,142,247,0.25),
+    0 0 60px rgba(59,130,246,0.1),
+    inset 0 -24px 48px rgba(0,0,0,0.45);
+  opacity: 0.65;
+  animation: armed-breathe 3s ease-in-out infinite;
+}
+@keyframes armed-breathe {
+  0%,100% { opacity: 0.55; box-shadow: 0 0 30px rgba(79,142,247,0.2), inset 0 -24px 48px rgba(0,0,0,0.45); }
+  50%      { opacity: 0.75; box-shadow: 0 0 55px rgba(79,142,247,0.35), inset 0 -24px 48px rgba(0,0,0,0.45); }
 }
 
 @keyframes idle-breathe {
@@ -341,6 +360,43 @@ main {
   gap: 0.6rem;
   width: 100%;
   max-width: 280px;
+}
+
+/* Conversation mode button */
+#conv-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: 100%;
+  min-height: 44px;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.65rem 1.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  user-select: none;
+  transition: background 200ms, border-color 200ms, color 200ms, box-shadow 200ms;
+}
+#conv-btn:hover {
+  background: rgba(52,211,153,0.08);
+  border-color: rgba(52,211,153,0.3);
+  color: var(--green);
+}
+#conv-btn.active {
+  background: rgba(52,211,153,0.12);
+  border-color: rgba(52,211,153,0.5);
+  color: var(--green);
+  box-shadow: 0 0 16px rgba(52,211,153,0.2);
+  animation: conv-pulse 2.5s ease-in-out infinite;
+}
+@keyframes conv-pulse {
+  0%,100% { box-shadow: 0 0 12px rgba(52,211,153,0.15); }
+  50%      { box-shadow: 0 0 24px rgba(52,211,153,0.35); }
 }
 
 /* PTT button */

@@ -16,6 +16,8 @@ const orderBarText    = document.getElementById('order-bar-text');
 const orderBarTimer   = document.getElementById('order-bar-timer');
 const orderConfirmBtn = document.getElementById('order-confirm-btn');
 const orderCancelBtn  = document.getElementById('order-cancel-btn');
+const convBtn         = document.getElementById('conv-btn');
+const convLabel       = document.getElementById('conv-label');
 
 let state = 'idle';
 let mediaRecorder = null;
@@ -26,11 +28,175 @@ let thinkingEl = null;
 let orderDismissTimer = null;
 
 // ============================================================
+// VAD / Conversation mode
+// ============================================================
+
+const VAD_RMS_THRESHOLD     = 0.012; // tune for ambient noise
+const VAD_START_DEBOUNCE_MS = 200;   // must be above threshold this long to start
+const VAD_STOP_DEBOUNCE_MS  = 1200;  // must be below threshold this long to stop
+const CONV_TIMEOUT_MS       = 30000; // end conv mode after 30s total silence
+const ARMED_PROMPT_MS       = 5000;  // after 5s in armed state, ask "are you there?"
+const ARMED_IDLE_MS         = 5000;  // 5s after prompt with no reply → exit conv mode
+
+let convMode        = false;
+let vadStream       = null;    // kept alive for full session
+let vadAnalyser     = null;
+let vadRafId        = null;
+let vadSpeaking     = false;
+let vadSpeechStart  = 0;
+let vadSilenceStart = 0;
+let vadMediaRec     = null;
+let vadChunks       = [];
+
+let convTimeoutTimer  = null;
+let armedPromptTimer  = null;
+let armedIdleTimer    = null;
+
+function computeRMS(analyser) {
+  const buf = new Float32Array(analyser.fftSize);
+  analyser.getFloatTimeDomainData(buf);
+  let sum = 0;
+  for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+  return Math.sqrt(sum / buf.length);
+}
+
+function resetArmedTimers() {
+  clearTimeout(armedPromptTimer);
+  clearTimeout(armedIdleTimer);
+  armedPromptTimer = null;
+  armedIdleTimer   = null;
+}
+
+function startArmedTimers() {
+  resetArmedTimers();
+  armedPromptTimer = setTimeout(() => {
+    if (!convMode || vadSpeaking || busy) return;
+    sendText('are you still there?', true); // silent — don't show in chat
+    armedIdleTimer = setTimeout(() => {
+      if (convMode && !vadSpeaking && !busy) stopConvMode();
+    }, ARMED_IDLE_MS);
+  }, ARMED_PROMPT_MS);
+}
+
+function resetConvTimeout() {
+  clearTimeout(convTimeoutTimer);
+  convTimeoutTimer = setTimeout(() => {
+    if (convMode) stopConvMode();
+  }, CONV_TIMEOUT_MS);
+}
+
+function vadLoop() {
+  if (!convMode) return;
+  vadRafId = requestAnimationFrame(vadLoop);
+  if (busy) return;
+
+  const rms = computeRMS(vadAnalyser);
+
+  if (!vadSpeaking) {
+    if (rms > VAD_RMS_THRESHOLD) {
+      if (vadSpeechStart === 0) vadSpeechStart = Date.now();
+      if (Date.now() - vadSpeechStart >= VAD_START_DEBOUNCE_MS) {
+        startVADRecording();
+      }
+    } else {
+      vadSpeechStart = 0;
+    }
+  } else {
+    if (rms < VAD_RMS_THRESHOLD) {
+      if (vadSilenceStart === 0) vadSilenceStart = Date.now();
+      if (Date.now() - vadSilenceStart >= VAD_STOP_DEBOUNCE_MS) {
+        stopVADRecording();
+      }
+    } else {
+      vadSilenceStart = 0;
+    }
+  }
+}
+
+function startVADRecording() {
+  vadSpeaking     = true;
+  vadSilenceStart = 0;
+  vadSpeechStart  = 0;
+  vadChunks       = [];
+
+  resetArmedTimers();
+  resetConvTimeout();
+
+  const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', '']
+    .find(m => !m || MediaRecorder.isTypeSupported(m));
+  vadMediaRec = new MediaRecorder(vadStream, mime ? { mimeType: mime } : {});
+  vadMediaRec.ondataavailable = e => { if (e.data.size) vadChunks.push(e.data); };
+  vadMediaRec.onstop = () => {
+    vadSpeaking     = false;
+    vadSpeechStart  = 0;
+    vadSilenceStart = 0;
+    const blob = new Blob(vadChunks, { type: vadMediaRec.mimeType });
+    if (convMode) setState('armed');
+    if (blob.size > 1000) sendVoiceBlob(blob);
+    else if (convMode) startArmedTimers();
+  };
+  vadMediaRec.start();
+  setState('listening');
+}
+
+function stopVADRecording() {
+  if (vadMediaRec && vadMediaRec.state !== 'inactive') {
+    vadMediaRec.stop();
+  }
+}
+
+async function startConvMode() {
+  try {
+    vadStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch {
+    setState('error', 'Mic access denied');
+    setTimeout(() => setState('idle'), 3000);
+    return;
+  }
+  const ctx = getAudioCtx();
+  if (ctx.state === 'suspended') await ctx.resume();
+  const source = ctx.createMediaStreamSource(vadStream);
+  vadAnalyser = ctx.createAnalyser();
+  vadAnalyser.fftSize = 2048;
+  source.connect(vadAnalyser);
+
+  convMode = true;
+  convBtn.classList.add('active');
+  convLabel.textContent = 'End conversation';
+  setState('armed');
+  startArmedTimers();
+  resetConvTimeout();
+  vadLoop();
+}
+
+function stopConvMode() {
+  convMode = false;
+  cancelAnimationFrame(vadRafId);
+  resetArmedTimers();
+  clearTimeout(convTimeoutTimer);
+
+  if (vadMediaRec && vadMediaRec.state !== 'inactive') vadMediaRec.stop();
+  if (vadStream) vadStream.getTracks().forEach(t => t.stop());
+  vadStream   = null;
+  vadAnalyser = null;
+
+  convBtn.classList.remove('active');
+  convLabel.textContent = 'Start conversation';
+  setState('idle');
+}
+
+convBtn.addEventListener('click', () => {
+  if (convMode) stopConvMode();
+  else startConvMode();
+});
+
+// ============================================================
 // State machine
 // ============================================================
 
 const LABELS = {
   idle:      'Hold Space or tap to speak',
+  armed:     'Listening for you…',
   listening: 'Listening…',
   thinking:  'Thinking…',
   speaking:  'Speaking…',
@@ -44,12 +210,14 @@ function setState(s, customLabel) {
   statusLabel.textContent = customLabel ?? LABELS[s] ?? s;
   waveform.classList.toggle('active', s === 'listening');
 
-  if (s === 'listening') {
-    pttBtn.classList.add('listening');
-    pttLabel.textContent = 'Release to send';
-  } else {
-    pttBtn.classList.remove('listening');
-    pttLabel.textContent = 'Hold to talk';
+  if (!convMode) {
+    if (s === 'listening') {
+      pttBtn.classList.add('listening');
+      pttLabel.textContent = 'Release to send';
+    } else {
+      pttBtn.classList.remove('listening');
+      pttLabel.textContent = 'Hold to talk';
+    }
   }
 
   const locked = s === 'thinking' || s === 'speaking';
@@ -60,6 +228,11 @@ function setState(s, customLabel) {
     showThinking();
   } else {
     hideThinking();
+  }
+
+  // Restart inactivity timers whenever we go armed
+  if (s === 'armed' && convMode) {
+    startArmedTimers();
   }
 }
 
@@ -129,7 +302,6 @@ function showOrderBar(orderSummary) {
   orderBar.setAttribute('aria-hidden', 'false');
   orderConfirmBtn.focus();
 
-  // Shrink the timer bar over ORDER_TIMEOUT ms
   orderBarTimer.style.transition = 'none';
   orderBarTimer.style.transform = 'scaleX(1)';
   orderBarTimer.getBoundingClientRect(); // force reflow
@@ -188,7 +360,6 @@ async function playBase64Audio(b64) {
 // ============================================================
 
 async function handleResponse(data, transcriptText) {
-  // For voice input: show transcript as user message
   if (transcriptText) appendMessage('user', transcriptText);
 
   if (data.confirmation_required && data.order_summary) {
@@ -198,7 +369,12 @@ async function handleResponse(data, transcriptText) {
   setState('speaking');
   if (data.reply) appendMessage('assistant', data.reply);
   await playBase64Audio(data.audio_b64);
-  setState('idle');
+
+  if (convMode) {
+    setState('armed'); // re-arm VAD — RAF loop already running
+  } else {
+    setState('idle');
+  }
 }
 
 async function sendVoiceBlob(blob) {
@@ -214,18 +390,19 @@ async function sendVoiceBlob(blob) {
   } catch (e) {
     console.error(e);
     setState('error', e.message);
-    setTimeout(() => setState('idle'), 3000);
+    setTimeout(() => convMode ? setState('armed') : setState('idle'), 3000);
   } finally {
     busy = false;
+    if (convMode) startArmedTimers();
   }
 }
 
-async function sendText(text) {
+// silent: true → don't show user message (used for internal "are you there?" probe)
+async function sendText(text, silent = false) {
   if (!text.trim() || busy) return;
   busy = true;
 
-  const isSentinel = text === '__confirm_order__' || text === 'cancel the order';
-  // Show user message immediately before the network round-trip
+  const isSentinel = text === '__confirm_order__' || text === 'cancel the order' || silent;
   if (!isSentinel) appendMessage('user', text);
 
   setState('thinking');
@@ -237,22 +414,23 @@ async function sendText(text) {
     });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.statusText);
     const data = await res.json();
-    await handleResponse(data, null); // user msg already appended
+    await handleResponse(data, null);
   } catch (e) {
     console.error(e);
     setState('error', e.message);
-    setTimeout(() => setState('idle'), 3000);
+    setTimeout(() => convMode ? setState('armed') : setState('idle'), 3000);
   } finally {
     busy = false;
+    if (convMode) startArmedTimers();
   }
 }
 
 // ============================================================
-// MediaRecorder
+// MediaRecorder (PTT — fallback mode)
 // ============================================================
 
 async function startRecording() {
-  if (busy || state === 'listening') return;
+  if (busy || state === 'listening' || convMode) return;
   let stream;
   try {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -285,14 +463,12 @@ function stopRecording() {
 // Event listeners
 // ============================================================
 
-// Push-to-talk
 pttBtn.addEventListener('mousedown',  e => { e.preventDefault(); startRecording(); });
 pttBtn.addEventListener('mouseup',    () => stopRecording());
 pttBtn.addEventListener('mouseleave', () => stopRecording());
 pttBtn.addEventListener('touchstart', e => { e.preventDefault(); startRecording(); }, { passive: false });
 pttBtn.addEventListener('touchend',   e => { e.preventDefault(); stopRecording(); },  { passive: false });
 
-// Spacebar shortcut
 document.addEventListener('keydown', e => {
   if (e.code === 'Space' && document.activeElement === document.body && !e.repeat) {
     e.preventDefault();
@@ -301,7 +477,6 @@ document.addEventListener('keydown', e => {
 });
 document.addEventListener('keyup', e => { if (e.code === 'Space') stopRecording(); });
 
-// Text input
 sendBtn.addEventListener('click', () => {
   const t = textInput.value.trim();
   if (!t) return;
@@ -318,5 +493,4 @@ textInput.addEventListener('keydown', e => {
   }
 });
 
-// Unlock AudioContext on first user gesture
 document.addEventListener('pointerdown', () => getAudioCtx().resume(), { once: true });

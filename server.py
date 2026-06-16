@@ -13,9 +13,13 @@ from starlette.concurrency import run_in_threadpool
 
 from config.settings import load_settings
 from core.conversation import ConversationManager
+from core.registry import IntegrationRegistry
 from integrations.ha_client import HAClient
+from integrations.ha_integration import HAIntegration
 from integrations.swiggy_client import SwiggyClient
+from integrations.swiggy_integration import SwiggyIntegration
 from integrations.google_calendar_client import GoogleCalendarClient
+from integrations.google_calendar_integration import GoogleCalendarIntegration
 from services.llm import LLMClient
 from utils.logger import get_logger, setup_logging
 import services.stt as stt_service
@@ -36,11 +40,21 @@ async def lifespan(app: FastAPI):
     _tts_speaker = await run_in_threadpool(
         tts_service.validate_speaker, _settings.SARVAM_API_KEY, _settings.TTS_SPEAKER, _settings.TTS_LANGUAGE
     )
-    ha = HAClient(_settings.HA_URL, _settings.HA_TOKEN)
-    llm = LLMClient(_settings.GROQ_API_KEY)
-    swiggy = SwiggyClient(_settings.SWIGGY_ACCESS_TOKEN)
-    gcal = GoogleCalendarClient(_settings.GOOGLE_CALENDAR_TOKEN, _settings.GOOGLE_CALENDAR_CREDENTIALS)
-    _conv = ConversationManager(llm, ha, swiggy, gcal)
+
+    # Build clients
+    ha_client = HAClient(_settings.HA_URL, _settings.HA_TOKEN)
+    swiggy_client = SwiggyClient(_settings.SWIGGY_ACCESS_TOKEN)
+    gcal_client = GoogleCalendarClient(_settings.GOOGLE_CALENDAR_TOKEN, _settings.GOOGLE_CALENDAR_CREDENTIALS)
+
+    # Register integrations — add or remove features here, nothing else changes
+    registry = IntegrationRegistry()
+    registry.register(HAIntegration(ha_client))
+    registry.register(SwiggyIntegration(swiggy_client))
+    registry.register(GoogleCalendarIntegration(gcal_client))
+
+    llm = LLMClient(_settings.GROQ_API_KEY, tools=registry.get_all_tools())
+    ha_integration = registry.get_integration("ha")
+    _conv = ConversationManager(llm, ha_integration, registry)
     await run_in_threadpool(_conv.start)
     log.info("server: Ronny is ready")
     yield
@@ -76,7 +90,6 @@ async def _llm_and_tts(user_text: str) -> AssistantResponse:
         log.error("server: TTS error", error=str(e))
         raise HTTPException(status_code=502, detail=f"TTS error: {e}")
 
-    # Check if a Swiggy order is awaiting physical confirmation
     pending = _conv.get_pending_order()
 
     return AssistantResponse(

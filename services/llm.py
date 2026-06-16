@@ -1,12 +1,7 @@
 from groq import Groq
 
 from config.settings import get_settings
-from integrations.ha_tools import HA_TOOLS
-from integrations.swiggy_tools import SWIGGY_TOOLS
-from integrations.google_calendar_tools import GOOGLE_CALENDAR_TOOLS
 from utils.logger import get_logger
-
-ALL_TOOLS = HA_TOOLS + SWIGGY_TOOLS + GOOGLE_CALENDAR_TOOLS
 
 log = get_logger(__name__)
 
@@ -15,14 +10,16 @@ class LLMClient:
     """
     Wraps the Groq client. Holds conversation history and system prompt
     because Groq uses stateless chat completions (no server-side session).
+    Tools are injected at construction time via the IntegrationRegistry.
     """
 
-    def __init__(self, api_key: str) -> None:
+    def __init__(self, api_key: str, tools: list[dict] | None = None) -> None:
         self._client = Groq(api_key=api_key)
         self._model = get_settings().GROQ_MODEL
+        self._tools = tools or []
         self._system_prompt: str = ""
         self._history: list[dict] = []
-        log.info("llm: client initialised", model=self._model)
+        log.info("llm: client initialised", model=self._model, tools=len(self._tools))
 
     def start_chat(self, system_prompt: str) -> "LLMClient":
         """Set system prompt and reset history. Returns self for chaining."""
@@ -38,11 +35,10 @@ class LLMClient:
         response = self._client.chat.completions.create(
             model=self._model,
             messages=messages,
-            tools=ALL_TOOLS,
+            tools=self._tools,
             tool_choice="auto",
             max_tokens=1024,
         )
-        # Append assistant message to history (may contain tool_calls)
         self._history.append(response.choices[0].message)
         return response
 
@@ -59,7 +55,7 @@ class LLMClient:
         response = self._client.chat.completions.create(
             model=self._model,
             messages=messages,
-            tools=ALL_TOOLS,
+            tools=self._tools,
             tool_choice="auto",
             max_tokens=512,
         )
