@@ -14,7 +14,7 @@ A Python-based voice AI assistant that controls smart home devices, orders food,
 - Groq `llama-3.3-70b-versatile` as the LLM with OpenAI-compatible function calling
 - Deployed as a FastAPI web server exposed via Cloudflare Tunnel (`asistant.rvhome.space`)
 
-### ✅ Phase 2 — Swiggy Food & Grocery Ordering
+### 🔄 Phase 2 — Swiggy Food & Grocery Ordering *(waiting for OAuth token)*
 - Order food from restaurants via Swiggy voice commands
 - Order groceries via Swiggy Instamart
 - Book dine-out restaurant tables (free reservations)
