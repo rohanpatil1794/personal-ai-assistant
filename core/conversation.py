@@ -3,6 +3,7 @@ Manages the LLM conversation and the tool-call / tool-result exchange.
 Uses the Groq SDK (OpenAI-compatible chat completions).
 """
 import json
+from datetime import datetime
 
 from integrations.ha_integration import HAIntegration
 from core.registry import IntegrationRegistry
@@ -34,9 +35,18 @@ Available HA entities:
 - Never place a food or grocery order without first calling swiggy_place_food_order or swiggy_place_grocery_order to show a summary. Wait for the UI confirmation button before confirming.
 - For dine-out bookings, only book FREE reservations.
 - Payment is always Cash on Delivery (COD).
-- If you need any information before acting (address, quantity, date, device name), ask for it naturally — never assume or skip ahead.
+- If you need any information before acting (address, quantity, device name), ask for it naturally — never assume or skip ahead.
 - When the user says "__confirm_order__", call swiggy_confirm_food_order or swiggy_confirm_grocery_order based on the active pending order.
 - When the user says "cancel the order", acknowledge warmly — no tool call needed.
+
+## Calendar Rules
+- Today's date is {today}. Use this to resolve relative dates like "today", "tomorrow", "this evening".
+- When creating an event, only ask for the title and time if not already provided. Nothing else.
+- Never ask for end time, location, or description — these are optional and should never be requested.
+- If end time is not mentioned, assume 1 hour duration.
+- If no date is mentioned, assume today if the time is still in the future, otherwise tomorrow.
+- Always use timezone Asia/Kolkata (IST, UTC+5:30) for all calendar events.
+- After creating an event, confirm with one natural sentence: event title, date, and time only. No markdown.
 """.strip()
 
 
@@ -61,7 +71,8 @@ class ConversationManager:
             log.warning("conversation: could not fetch HA entities", error=str(e))
             entity_lines = "(Could not fetch entity list)"
 
-        system_prompt = SYSTEM_PROMPT_TEMPLATE.format(entity_list=entity_lines)
+        today = datetime.now().strftime("%A, %d %B %Y")
+        system_prompt = SYSTEM_PROMPT_TEMPLATE.format(entity_list=entity_lines, today=today)
         self._llm.start_chat(system_prompt)
         self._started = True
         log.info("conversation: session started")
