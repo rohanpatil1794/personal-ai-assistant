@@ -1,5 +1,6 @@
 from groq import Groq
 
+from config.settings import get_settings
 from integrations.ha_tools import HA_TOOLS
 from integrations.swiggy_tools import SWIGGY_TOOLS
 from utils.logger import get_logger
@@ -7,8 +8,6 @@ from utils.logger import get_logger
 ALL_TOOLS = HA_TOOLS + SWIGGY_TOOLS
 
 log = get_logger(__name__)
-
-MODEL_NAME = "llama-3.1-8b-instant"
 
 
 class LLMClient:
@@ -19,9 +18,10 @@ class LLMClient:
 
     def __init__(self, api_key: str) -> None:
         self._client = Groq(api_key=api_key)
+        self._model = get_settings().GROQ_MODEL
         self._system_prompt: str = ""
         self._history: list[dict] = []
-        log.info("llm: client initialised", model=MODEL_NAME)
+        log.info("llm: client initialised", model=self._model)
 
     def start_chat(self, system_prompt: str) -> "LLMClient":
         """Set system prompt and reset history. Returns self for chaining."""
@@ -35,7 +35,7 @@ class LLMClient:
         messages = [{"role": "system", "content": self._system_prompt}] + self._history
 
         response = self._client.chat.completions.create(
-            model=MODEL_NAME,
+            model=self._model,
             messages=messages,
             tools=ALL_TOOLS,
             tool_choice="auto",
@@ -56,7 +56,7 @@ class LLMClient:
         })
         messages = [{"role": "system", "content": self._system_prompt}] + self._history
         response = self._client.chat.completions.create(
-            model=MODEL_NAME,
+            model=self._model,
             messages=messages,
             tools=ALL_TOOLS,
             tool_choice="auto",

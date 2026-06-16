@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     HA_URL: str
     HA_TOKEN: str
     SWIGGY_ACCESS_TOKEN: str = ""
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
 
     model_config = SettingsConfigDict(
         env_file=".env",
