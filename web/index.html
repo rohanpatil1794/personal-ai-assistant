@@ -10,13 +10,13 @@
 </head>
 <body>
 
-  <!-- Minimal header -->
   <header>
     <div class="logo-row">
       <div id="status-dot" class="status-dot"></div>
       <span class="logo-name">Ronny</span>
       <span class="logo-tag">Personal AI Assistant</span>
     </div>
+    <button id="clear-btn" aria-label="Clear conversation">Clear</button>
   </header>
 
   <main>
@@ -26,6 +26,7 @@
       <div class="sphere-scene">
         <div class="sphere-glow"></div>
         <div id="sphere" class="idle" role="img" aria-label="Assistant state"></div>
+        <div class="sphere-ring"></div>
         <div class="sphere-gloss"></div>
       </div>
 
@@ -59,7 +60,7 @@
       </div>
     </div>
 
-    <!-- Right: caption area -->
+    <!-- Right: conversation history -->
     <div id="caption-panel">
       <!-- Empty state -->
       <div id="empty-state">
@@ -67,14 +68,11 @@
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
         </svg>
         <h2>How can I help?</h2>
-        <p>Hold the talk button or the Space bar to speak — or type a message.</p>
+        <p>Hold the talk button or Space bar to speak — or type a message.</p>
       </div>
 
-      <!-- Caption (disappearing) -->
-      <div id="caption" aria-live="polite" aria-atomic="true">
-        <p id="caption-user" class="cap-user"></p>
-        <p id="caption-assistant" class="cap-assistant"></p>
-      </div>
+      <!-- Persistent conversation history -->
+      <div id="messages" role="log" aria-live="polite" aria-label="Conversation history"></div>
     </div>
 
   </main>

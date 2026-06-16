@@ -1,29 +1,28 @@
 /* Ronny — Voice-first minimalist UI */
 
-const sphere         = document.getElementById('sphere');
-const statusDot      = document.getElementById('status-dot');
-const statusLabel    = document.getElementById('status-label');
-const waveform       = document.getElementById('waveform');
-const pttBtn         = document.getElementById('ptt-btn');
-const pttLabel       = document.getElementById('ptt-label');
-const textInput      = document.getElementById('text-input');
-const sendBtn        = document.getElementById('send-btn');
-const emptyState     = document.getElementById('empty-state');
-const captionEl      = document.getElementById('caption');
-const capUser        = document.getElementById('caption-user');
-const capAssistant   = document.getElementById('caption-assistant');
-const orderBar       = document.getElementById('order-bar');
-const orderBarText   = document.getElementById('order-bar-text');
-const orderBarTimer  = document.getElementById('order-bar-timer');
-const orderConfirmBtn= document.getElementById('order-confirm-btn');
-const orderCancelBtn = document.getElementById('order-cancel-btn');
+const sphere          = document.getElementById('sphere');
+const statusDot       = document.getElementById('status-dot');
+const statusLabel     = document.getElementById('status-label');
+const waveform        = document.getElementById('waveform');
+const pttBtn          = document.getElementById('ptt-btn');
+const pttLabel        = document.getElementById('ptt-label');
+const textInput       = document.getElementById('text-input');
+const sendBtn         = document.getElementById('send-btn');
+const emptyState      = document.getElementById('empty-state');
+const messagesEl      = document.getElementById('messages');
+const clearBtn        = document.getElementById('clear-btn');
+const orderBar        = document.getElementById('order-bar');
+const orderBarText    = document.getElementById('order-bar-text');
+const orderBarTimer   = document.getElementById('order-bar-timer');
+const orderConfirmBtn = document.getElementById('order-confirm-btn');
+const orderCancelBtn  = document.getElementById('order-cancel-btn');
 
 let state = 'idle';
 let mediaRecorder = null;
 let audioChunks = [];
 let audioCtx = null;
 let busy = false;
-let captionTimer = null;
+let thinkingEl = null;
 let orderDismissTimer = null;
 
 // ============================================================
@@ -56,47 +55,57 @@ function setState(s, customLabel) {
   const locked = s === 'thinking' || s === 'speaking';
   textInput.disabled = locked;
   sendBtn.disabled   = locked;
-}
 
-// ============================================================
-// Caption system — shows text then fades after delay
-// ============================================================
-
-function showCaption(userText, assistantText) {
-  // Clear any existing fade timer
-  if (captionTimer) clearTimeout(captionTimer);
-
-  // Hide empty state
-  emptyState.style.opacity = '0';
-  emptyState.style.pointerEvents = 'none';
-
-  // Set user text (if any)
-  if (userText) {
-    capUser.textContent = userText;
-    capUser.classList.add('visible');
+  if (s === 'thinking') {
+    showThinking();
   } else {
-    capUser.classList.remove('visible');
-    capUser.textContent = '';
+    hideThinking();
   }
-
-  // Set assistant text
-  capAssistant.textContent = assistantText;
-  capAssistant.classList.add('visible');
-
-  // Auto-fade after 5s
-  captionTimer = setTimeout(clearCaption, 5000);
 }
 
-function clearCaption() {
-  capUser.classList.remove('visible');
-  capAssistant.classList.remove('visible');
-  captionTimer = setTimeout(() => {
-    capUser.textContent = '';
-    capAssistant.textContent = '';
-    emptyState.style.opacity = '';
-    emptyState.style.pointerEvents = '';
-  }, 400);
+// ============================================================
+// Conversation history
+// ============================================================
+
+function appendMessage(role, text) {
+  emptyState.classList.add('hidden');
+  clearBtn.classList.add('visible');
+
+  const div = document.createElement('div');
+  div.className = `msg msg-${role}`;
+  div.textContent = text;
+  messagesEl.appendChild(div);
+  scrollToBottom();
 }
+
+function showThinking() {
+  if (thinkingEl) return;
+  thinkingEl = document.createElement('div');
+  thinkingEl.className = 'msg msg-assistant msg-thinking';
+  thinkingEl.innerHTML =
+    '<span class="thinking-dot"></span>' +
+    '<span class="thinking-dot"></span>' +
+    '<span class="thinking-dot"></span>';
+  messagesEl.appendChild(thinkingEl);
+  scrollToBottom();
+}
+
+function hideThinking() {
+  if (thinkingEl) {
+    thinkingEl.remove();
+    thinkingEl = null;
+  }
+}
+
+function scrollToBottom() {
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+clearBtn.addEventListener('click', () => {
+  messagesEl.innerHTML = '';
+  emptyState.classList.remove('hidden');
+  clearBtn.classList.remove('visible');
+});
 
 // ============================================================
 // Order confirmation bar — slides up, auto-dismisses in 15s
@@ -105,7 +114,6 @@ function clearCaption() {
 const ORDER_TIMEOUT = 15000;
 
 function showOrderBar(orderSummary) {
-  // Build a compact summary string
   let summary = 'Order ready · COD';
   try {
     const items = orderSummary.items || orderSummary.cart?.items || [];
@@ -121,11 +129,10 @@ function showOrderBar(orderSummary) {
   orderBar.setAttribute('aria-hidden', 'false');
   orderConfirmBtn.focus();
 
-  // Animate timer bar shrinking over ORDER_TIMEOUT ms
+  // Shrink the timer bar over ORDER_TIMEOUT ms
   orderBarTimer.style.transition = 'none';
   orderBarTimer.style.transform = 'scaleX(1)';
-  // Force reflow then start shrink
-  orderBarTimer.getBoundingClientRect();
+  orderBarTimer.getBoundingClientRect(); // force reflow
   orderBarTimer.style.transition = `transform ${ORDER_TIMEOUT}ms linear`;
   orderBarTimer.style.transform = 'scaleX(0)';
 
@@ -180,16 +187,16 @@ async function playBase64Audio(b64) {
 // Core pipeline
 // ============================================================
 
-async function handleResponse(data, userText) {
-  // Show caption (user text + assistant reply)
-  showCaption(userText || data.transcript || null, data.reply);
+async function handleResponse(data, transcriptText) {
+  // For voice input: show transcript as user message
+  if (transcriptText) appendMessage('user', transcriptText);
 
-  // Order confirmation bar instead of modal
   if (data.confirmation_required && data.order_summary) {
     showOrderBar(data.order_summary);
   }
 
   setState('speaking');
+  if (data.reply) appendMessage('assistant', data.reply);
   await playBase64Audio(data.audio_b64);
   setState('idle');
 }
@@ -218,7 +225,8 @@ async function sendText(text) {
   busy = true;
 
   const isSentinel = text === '__confirm_order__' || text === 'cancel the order';
-  const displayText = isSentinel ? null : text;
+  // Show user message immediately before the network round-trip
+  if (!isSentinel) appendMessage('user', text);
 
   setState('thinking');
   try {
@@ -229,7 +237,7 @@ async function sendText(text) {
     });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.statusText);
     const data = await res.json();
-    await handleResponse(data, displayText);
+    await handleResponse(data, null); // user msg already appended
   } catch (e) {
     console.error(e);
     setState('error', e.message);
@@ -254,7 +262,7 @@ async function startRecording() {
     return;
   }
   audioChunks = [];
-  const mime = ['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','']
+  const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', '']
     .find(m => !m || MediaRecorder.isTypeSupported(m));
   mediaRecorder = new MediaRecorder(stream, mime ? { mimeType: mime } : {});
   mediaRecorder.ondataavailable = e => { if (e.data.size) audioChunks.push(e.data); };
@@ -277,17 +285,18 @@ function stopRecording() {
 // Event listeners
 // ============================================================
 
-// PTT
+// Push-to-talk
 pttBtn.addEventListener('mousedown',  e => { e.preventDefault(); startRecording(); });
 pttBtn.addEventListener('mouseup',    () => stopRecording());
 pttBtn.addEventListener('mouseleave', () => stopRecording());
 pttBtn.addEventListener('touchstart', e => { e.preventDefault(); startRecording(); }, { passive: false });
 pttBtn.addEventListener('touchend',   e => { e.preventDefault(); stopRecording(); },  { passive: false });
 
-// Spacebar
+// Spacebar shortcut
 document.addEventListener('keydown', e => {
   if (e.code === 'Space' && document.activeElement === document.body && !e.repeat) {
-    e.preventDefault(); startRecording();
+    e.preventDefault();
+    startRecording();
   }
 });
 document.addEventListener('keyup', e => { if (e.code === 'Space') stopRecording(); });
@@ -309,5 +318,5 @@ textInput.addEventListener('keydown', e => {
   }
 });
 
-// Resume AudioContext on first gesture
+// Unlock AudioContext on first user gesture
 document.addEventListener('pointerdown', () => getAudioCtx().resume(), { once: true });
