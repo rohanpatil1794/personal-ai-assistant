@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     HA_TOKEN: str
     SWIGGY_ACCESS_TOKEN: str = ""
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    GOOGLE_CALENDAR_TOKEN: str = "token.json"
+    GOOGLE_CALENDAR_CREDENTIALS: str = "credentials.json"
 
     model_config = SettingsConfigDict(
         env_file=".env",

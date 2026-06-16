@@ -15,6 +15,7 @@ from config.settings import load_settings
 from core.conversation import ConversationManager
 from integrations.ha_client import HAClient
 from integrations.swiggy_client import SwiggyClient
+from integrations.google_calendar_client import GoogleCalendarClient
 from services.llm import LLMClient
 from utils.logger import get_logger, setup_logging
 import services.stt as stt_service
@@ -34,7 +35,8 @@ async def lifespan(app: FastAPI):
     ha = HAClient(_settings.HA_URL, _settings.HA_TOKEN)
     llm = LLMClient(_settings.GROQ_API_KEY)
     swiggy = SwiggyClient(_settings.SWIGGY_ACCESS_TOKEN)
-    _conv = ConversationManager(llm, ha, swiggy)
+    gcal = GoogleCalendarClient(_settings.GOOGLE_CALENDAR_TOKEN, _settings.GOOGLE_CALENDAR_CREDENTIALS)
+    _conv = ConversationManager(llm, ha, swiggy, gcal)
     await run_in_threadpool(_conv.start)
     log.info("server: Ronny is ready")
     yield

@@ -3,9 +3,10 @@ from groq import Groq
 from config.settings import get_settings
 from integrations.ha_tools import HA_TOOLS
 from integrations.swiggy_tools import SWIGGY_TOOLS
+from integrations.google_calendar_tools import GOOGLE_CALENDAR_TOOLS
 from utils.logger import get_logger
 
-ALL_TOOLS = HA_TOOLS + SWIGGY_TOOLS
+ALL_TOOLS = HA_TOOLS + SWIGGY_TOOLS + GOOGLE_CALENDAR_TOOLS
 
 log = get_logger(__name__)
 

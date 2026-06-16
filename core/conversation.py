@@ -6,6 +6,7 @@ import json
 
 from integrations.ha_client import HAClient
 from integrations.swiggy_client import SwiggyClient, SwiggyError
+from integrations.google_calendar_client import GoogleCalendarClient, GoogleCalendarError
 from services.llm import LLMClient
 from utils.exceptions import GeminiError as LLMError
 from utils.logger import get_logger
@@ -21,6 +22,7 @@ Available HA entities:
 Rules:
 - For Home Assistant commands, use the get_ha_entities, control_ha_entity, activate_ha_scene, or call_ha_service tools.
 - For food ordering, grocery ordering, or dine-out table booking, use the swiggy_* tools.
+- For calendar tasks (checking schedule, adding/removing events, checking availability), use the calendar_* tools.
 - For food/grocery orders, always call swiggy_get_addresses first, then ask the user which address to use before searching.
 - Never place a food or grocery order without first calling swiggy_place_food_order or swiggy_place_grocery_order to show the user a summary. The UI will display a confirmation button — wait for that before confirming.
 - For dine-out bookings, only book FREE reservations. Paid deals are not supported in v1.
@@ -34,10 +36,11 @@ Rules:
 
 
 class ConversationManager:
-    def __init__(self, llm: LLMClient, ha: HAClient, swiggy: SwiggyClient) -> None:
+    def __init__(self, llm: LLMClient, ha: HAClient, swiggy: SwiggyClient, gcal: GoogleCalendarClient | None = None) -> None:
         self._llm = llm
         self._ha = ha
         self._swiggy = swiggy
+        self._gcal = gcal
         self._started = False
         self._pending_order: dict | None = None
         self._pending_order_type: str | None = None  # "food" or "grocery"
@@ -248,11 +251,38 @@ class ConversationManager:
                 status = self._swiggy.get_booking_status(args["order_id"])
                 return {"booking": status}
 
+            # --- Google Calendar ---
+            elif name == "calendar_list_events":
+                days_ahead = args.get("days_ahead", 7)
+                events = self._gcal.list_events(days_ahead=days_ahead)
+                return {"events": events}
+
+            elif name == "calendar_create_event":
+                event = self._gcal.create_event(
+                    summary=args["summary"],
+                    start_datetime=args["start_datetime"],
+                    end_datetime=args["end_datetime"],
+                    description=args.get("description", ""),
+                    location=args.get("location", ""),
+                )
+                return {"success": True, "event": event}
+
+            elif name == "calendar_delete_event":
+                self._gcal.delete_event(args["event_id"])
+                return {"success": True, "event_id": args["event_id"]}
+
+            elif name == "calendar_check_availability":
+                result = self._gcal.check_availability(args["date"])
+                return result
+
             else:
                 return {"error": f"Unknown tool: {name}"}
 
         except SwiggyError as e:
             log.error("conversation: swiggy error", tool=name, error=str(e))
+            return {"error": str(e)}
+        except GoogleCalendarError as e:
+            log.error("conversation: calendar error", tool=name, error=str(e))
             return {"error": str(e)}
         except Exception as e:
             log.error("conversation: tool dispatch error", tool=name, error=str(e))
