@@ -14,6 +14,7 @@ from starlette.concurrency import run_in_threadpool
 from config.settings import load_settings
 from core.conversation import ConversationManager
 from integrations.ha_client import HAClient
+from integrations.swiggy_client import SwiggyClient
 from services.llm import LLMClient
 from utils.logger import get_logger, setup_logging
 import services.stt as stt_service
@@ -32,7 +33,8 @@ async def lifespan(app: FastAPI):
     _settings = load_settings()
     ha = HAClient(_settings.HA_URL, _settings.HA_TOKEN)
     llm = LLMClient(_settings.GROQ_API_KEY)
-    _conv = ConversationManager(llm, ha)
+    swiggy = SwiggyClient(_settings.SWIGGY_ACCESS_TOKEN)
+    _conv = ConversationManager(llm, ha, swiggy)
     await run_in_threadpool(_conv.start)
     log.info("server: Ronny is ready")
     yield
@@ -49,6 +51,8 @@ class AssistantResponse(BaseModel):
     transcript: str | None = None
     reply: str
     audio_b64: str
+    confirmation_required: bool = False
+    order_summary: dict | None = None
 
 
 async def _llm_and_tts(user_text: str) -> AssistantResponse:
@@ -66,9 +70,14 @@ async def _llm_and_tts(user_text: str) -> AssistantResponse:
         log.error("server: TTS error", error=str(e))
         raise HTTPException(status_code=502, detail=f"TTS error: {e}")
 
+    # Check if a Swiggy order is awaiting physical confirmation
+    pending = _conv.get_pending_order()
+
     return AssistantResponse(
         reply=reply,
         audio_b64=base64.b64encode(wav_bytes).decode(),
+        confirmation_required=pending is not None,
+        order_summary=pending,
     )
 
 

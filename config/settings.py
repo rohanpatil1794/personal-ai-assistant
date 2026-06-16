@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     SARVAM_API_KEY: str
     HA_URL: str
     HA_TOKEN: str
+    SWIGGY_ACCESS_TOKEN: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",

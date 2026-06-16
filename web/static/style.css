@@ -183,6 +183,77 @@ header {
 }
 #send-btn:hover { border-color: var(--accent); }
 
+/* --- Order confirmation modal --- */
+#confirm-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+#confirm-modal.visible { display: flex; }
+
+#confirm-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  max-width: 380px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+#confirm-box h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+}
+#confirm-box .order-lines {
+  font-size: 0.85rem;
+  color: var(--text);
+  line-height: 1.7;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 0.6rem 0;
+}
+#confirm-box .payment-tag {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+#confirm-actions {
+  display: flex;
+  gap: 0.6rem;
+}
+#confirm-yes {
+  flex: 1;
+  background: #22aa44;
+  color: #fff;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.7rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+#confirm-yes:hover { background: #1d9139; }
+#confirm-no {
+  flex: 1;
+  background: transparent;
+  color: #ff6666;
+  border: 1px solid #ff6666;
+  border-radius: 0.5rem;
+  padding: 0.7rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+#confirm-no:hover { background: rgba(255,80,80,0.12); }
+
 /* Mobile */
 @media (max-width: 480px) {
   #sphere { width: 110px; height: 110px; }

@@ -1,12 +1,16 @@
 /* Ronny web UI — state machine + MediaRecorder + AudioContext */
 
-const sphere      = document.getElementById('sphere');
-const statusLabel = document.getElementById('status-label');
-const messages    = document.getElementById('messages');
-const chatPanel   = document.getElementById('chat-panel');
-const pttBtn      = document.getElementById('ptt-btn');
-const textInput   = document.getElementById('text-input');
-const sendBtn     = document.getElementById('send-btn');
+const sphere       = document.getElementById('sphere');
+const statusLabel  = document.getElementById('status-label');
+const messages     = document.getElementById('messages');
+const chatPanel    = document.getElementById('chat-panel');
+const pttBtn       = document.getElementById('ptt-btn');
+const textInput    = document.getElementById('text-input');
+const sendBtn      = document.getElementById('send-btn');
+const confirmModal = document.getElementById('confirm-modal');
+const confirmLines = document.getElementById('confirm-lines');
+const confirmYes   = document.getElementById('confirm-yes');
+const confirmNo    = document.getElementById('confirm-no');
 
 // States: idle | listening | thinking | speaking | error
 let state = 'idle';
@@ -39,6 +43,46 @@ function escHtml(t) {
   return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// --- Order confirmation modal ---
+
+function showConfirmModal(orderSummary) {
+  // Build a human-readable summary from the order data
+  let lines = '';
+  try {
+    const cart = orderSummary;
+    // Try to extract items and total from the Swiggy cart response shape
+    const items = cart.items || cart.cart?.items || [];
+    if (items.length) {
+      lines = items.map(i => {
+        const name = i.name || i.itemName || i.productName || 'Item';
+        const qty  = i.quantity ?? 1;
+        const price = i.price != null ? `₹${i.price}` : '';
+        return `${name} ×${qty}  ${price}`;
+      }).join('\n');
+    }
+    const total = cart.total || cart.bill?.total || cart.cart?.total;
+    if (total != null) lines += `\n\nTotal: ₹${total}`;
+  } catch {
+    lines = JSON.stringify(orderSummary, null, 2);
+  }
+  confirmLines.textContent = lines || 'See order details above.';
+  confirmModal.classList.add('visible');
+}
+
+function hideConfirmModal() {
+  confirmModal.classList.remove('visible');
+}
+
+confirmYes.addEventListener('click', () => {
+  hideConfirmModal();
+  sendText('__confirm_order__');
+});
+
+confirmNo.addEventListener('click', () => {
+  hideConfirmModal();
+  sendText('cancel the order');
+});
+
 // --- Audio playback via Web Audio API ---
 function getAudioCtx() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -59,6 +103,20 @@ async function playBase64Audio(b64) {
 }
 
 // --- Core send logic ---
+async function handleResponse(data) {
+  if (data.transcript) addMessage('user', data.transcript);
+  addMessage('assistant', data.reply);
+
+  if (data.confirmation_required && data.order_summary) {
+    // Show modal before speaking — user must physically confirm
+    showConfirmModal(data.order_summary);
+  }
+
+  setState('speaking');
+  await playBase64Audio(data.audio_b64);
+  setState('idle');
+}
+
 async function sendVoiceBlob(blob) {
   busy = true;
   setState('thinking');
@@ -70,26 +128,23 @@ async function sendVoiceBlob(blob) {
       const err = await res.json().catch(() => ({ detail: res.statusText }));
       throw new Error(err.detail || res.statusText);
     }
-    const data = await res.json();
-    if (data.transcript) addMessage('user', data.transcript);
-    addMessage('assistant', data.reply);
-    setState('speaking');
-    await playBase64Audio(data.audio_b64);
+    await handleResponse(await res.json());
   } catch (e) {
     console.error(e);
     setState('error', `Error: ${e.message}`);
     setTimeout(() => setState('idle'), 3000);
-    return;
   } finally {
     busy = false;
   }
-  setState('idle');
 }
 
 async function sendText(text) {
   if (!text.trim() || busy) return;
   busy = true;
-  addMessage('user', text);
+  // Don't show sentinel messages in chat
+  if (text !== '__confirm_order__' && text !== 'cancel the order') {
+    addMessage('user', text);
+  }
   setState('thinking');
   try {
     const res = await fetch('/api/text', {
@@ -102,7 +157,11 @@ async function sendText(text) {
       throw new Error(err.detail || res.statusText);
     }
     const data = await res.json();
+    // For sentinels, skip re-adding user message (already handled above or hidden)
     addMessage('assistant', data.reply);
+    if (data.confirmation_required && data.order_summary) {
+      showConfirmModal(data.order_summary);
+    }
     setState('speaking');
     await playBase64Audio(data.audio_b64);
   } catch (e) {
@@ -128,7 +187,6 @@ async function startRecording() {
     return;
   }
   audioChunks = [];
-  // Prefer WebM/Opus; fall back to whatever browser supports
   const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', '']
     .find(m => !m || MediaRecorder.isTypeSupported(m));
   mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});

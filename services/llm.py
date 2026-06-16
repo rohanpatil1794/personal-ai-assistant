@@ -1,7 +1,10 @@
 from groq import Groq
 
 from integrations.ha_tools import HA_TOOLS
+from integrations.swiggy_tools import SWIGGY_TOOLS
 from utils.logger import get_logger
+
+ALL_TOOLS = HA_TOOLS + SWIGGY_TOOLS
 
 log = get_logger(__name__)
 
@@ -34,7 +37,7 @@ class LLMClient:
         response = self._client.chat.completions.create(
             model=MODEL_NAME,
             messages=messages,
-            tools=HA_TOOLS,
+            tools=ALL_TOOLS,
             tool_choice="auto",
             max_tokens=1024,
         )
@@ -55,7 +58,7 @@ class LLMClient:
         response = self._client.chat.completions.create(
             model=MODEL_NAME,
             messages=messages,
-            tools=HA_TOOLS,
+            tools=ALL_TOOLS,
             tool_choice="auto",
             max_tokens=512,
         )
