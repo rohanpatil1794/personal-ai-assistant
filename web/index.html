@@ -1,47 +1,119 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" color-scheme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ronny — Personal AI Assistant</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <div id="app">
+
+    <!-- Header -->
     <header>
-      <span class="logo">Ronny</span>
-      <span class="tagline">Personal AI Assistant</span>
+      <div class="logo-group">
+        <div class="logo-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="22"/>
+          </svg>
+        </div>
+        <span class="logo-text">Ronny</span>
+      </div>
+      <div id="status-dot" class="status-dot idle" aria-label="Status: idle"></div>
     </header>
 
+    <!-- Sphere -->
     <div id="sphere-container">
-      <div id="sphere" class="idle"></div>
-      <p id="status-label">Hold Space or tap to speak</p>
+      <div class="sphere-wrapper" role="img" aria-label="Assistant state indicator">
+        <div class="sphere-ring"></div>
+        <div id="sphere" class="idle"></div>
+        <div class="sphere-reflection"></div>
+      </div>
+      <p id="status-label" class="status-label">Hold Space or tap to speak</p>
+
+      <!-- Waveform (shown during listening) -->
+      <div id="waveform" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
     </div>
 
-    <div id="chat-panel">
+    <!-- Chat -->
+    <div id="chat-panel" role="log" aria-live="polite" aria-label="Conversation">
       <div id="messages"></div>
     </div>
 
+    <!-- Controls -->
     <div id="controls">
-      <button id="ptt-btn" aria-label="Push to talk">&#x1F3A4; Hold to Talk</button>
+      <button id="ptt-btn" aria-label="Push to talk — hold to record">
+        <svg id="ptt-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="22"/>
+        </svg>
+        <span id="ptt-label">Hold to Talk</span>
+      </button>
+
       <div id="text-row">
-        <input id="text-input" type="text" placeholder="Or type a message…" autocomplete="off">
-        <button id="send-btn" aria-label="Send">Send</button>
+        <input
+          id="text-input"
+          type="text"
+          placeholder="Type a message…"
+          autocomplete="off"
+          aria-label="Type a message"
+        >
+        <button id="send-btn" aria-label="Send message">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
       </div>
     </div>
-  </div>
+
+  </div><!-- /#app -->
 
   <!-- Order confirmation modal -->
-  <div id="confirm-modal" role="dialog" aria-modal="true" aria-label="Confirm order">
+  <div id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div id="confirm-box">
-      <h2>Confirm your order</h2>
+      <div class="modal-header">
+        <div class="modal-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <path d="M16 10a4 4 0 0 1-8 0"/>
+          </svg>
+        </div>
+        <h2 id="modal-title">Confirm Order</h2>
+      </div>
+
       <div class="order-lines" id="confirm-lines">—</div>
-      <p class="payment-tag">Payment: Cash on Delivery</p>
+
+      <div class="payment-row">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect width="20" height="14" x="2" y="5" rx="2"/>
+          <line x1="2" y1="10" x2="22" y2="10"/>
+        </svg>
+        <span>Cash on Delivery</span>
+      </div>
+
       <div id="confirm-actions">
-        <button id="confirm-yes">Confirm Order</button>
-        <button id="confirm-no">Cancel</button>
+        <button id="confirm-yes">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Confirm
+        </button>
+        <button id="confirm-no">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+          Cancel
+        </button>
       </div>
     </div>
   </div>
