@@ -30,12 +30,12 @@ A Python-based voice AI assistant that controls smart home devices, orders food,
 - OAuth2 authorization with auto token refresh
 
 ### ✅ Phase 4 — Outbound Phone Calling
-- Place PSTN calls on Rohan's behalf via LiveKit SIP: *"Call mom and tell her I'll be late"*
-- Ronny introduces itself as "Rohan's personal AI assistant" and delivers the message in third person
+- Place PSTN calls on the user's behalf via LiveKit SIP: *"Call mom and tell her I'll be late"*
+- Ronny introduces itself as "the user's personal AI assistant" and delivers the message in third person
 - Live voice conversation on the call — STT, LLM, TTS pipeline runs inside the call
-- Extracts the other person's response and reports back: *"Rahul said okay, no problem"*
-- Contact book (`contacts.json`) with fuzzy name lookup — supports mom, dad, Rahul
-- Add contacts at runtime: *"Save Rahul's number as +91XXXXXXXXXX"*
+- Extracts the other person's response and reports back: *"They said okay, no problem"*
+- Contact book (`contacts.json`) with fuzzy name lookup
+- Add contacts at runtime: *"Save John's number as +91XXXXXXXXXX"*
 - Powered by LiveKit cloud (India West region), Groq LLM, and Sarvam TTS/STT
 
 ---
@@ -142,7 +142,7 @@ Open `http://localhost:8000` in your browser.
 - **Grocery:** *"Get 2 litres of milk from Instamart"* → same flow
 - **Dine-out:** *"Book a table for 2 at an Italian restaurant tonight"*
 - **Calendar:** *"What's on my calendar today?"*, *"Add a dentist appointment at 11am on Monday"*, *"Am I free this Saturday?"*
-- **Phone calls:** *"Call mom and tell her I'll be late"*, *"Call Rahul and ask if he's coming tonight"* → Ronny calls, talks, and reports back what they said
+- **Phone calls:** *"Call mom and tell her I'll be late"*, *"Call John and ask if he's coming tonight"* → Ronny calls, talks, and reports back what they said
 
 ---
 
