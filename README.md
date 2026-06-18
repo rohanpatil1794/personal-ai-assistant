@@ -108,14 +108,23 @@ A browser window will open for authorization. After approving, `token.json` is s
 
 1. Sign up at [livekit.io](https://livekit.io) → create a project → copy URL, API key, secret into `.env`
 2. Dashboard → SIP → Trunks → create an outbound SIP trunk → copy trunk ID into `.env`
-3. Add contacts to `contacts.json`:
+3. Set up your contacts file:
+
+```powershell
+copy contacts.example.json contacts.json
+```
+
+Then edit `contacts.json` with real E.164-formatted numbers (`+91XXXXXXXXXX` for India):
+
 ```json
 {
   "mom": "+91XXXXXXXXXX",
   "dad": "+91XXXXXXXXXX",
-  "rahul": "+91XXXXXXXXXX"
+  "friend": "+91XXXXXXXXXX"
 }
 ```
+
+> `contacts.json` is gitignored and never committed. `contacts.example.json` is the safe template that ships with the repo. You can add or update contacts at runtime by asking Ronny: *"Save John's number as +91XXXXXXXXXX"*.
 
 ### 5. Run
 
