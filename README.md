@@ -12,7 +12,7 @@ A Python-based voice AI assistant that controls smart home devices, orders food,
 - Controls lights, switches, fans, scenes, climate, and media players via Home Assistant REST API
 - Sarvam AI for Indian-English STT (`saarika:v2.5`) and TTS (`bulbul:v3`, speaker: rahul)
 - Groq `llama-3.3-70b-versatile` as the LLM with OpenAI-compatible function calling
-- Deployed as a FastAPI web server exposed via Cloudflare Tunnel (`asistant.rvhome.space`)
+- Deployed as a FastAPI web server exposed via Cloudflare Tunnel (your own domain)
 
 ### 🔄 Phase 2 — Swiggy Food & Grocery Ordering *(waiting for OAuth token)*
 - Order food from restaurants via Swiggy voice commands
@@ -53,7 +53,7 @@ A Python-based voice AI assistant that controls smart home devices, orders food,
 | Calling | LiveKit Agents + SIP trunk (outbound PSTN) |
 | Backend | FastAPI + uvicorn |
 | Frontend | Vanilla JS, Web Audio API, MediaRecorder |
-| Deployment | Cloudflare Tunnel → `asistant.rvhome.space` |
+| Deployment | Cloudflare Tunnel → your own domain |
 
 ---
 
@@ -62,7 +62,7 @@ A Python-based voice AI assistant that controls smart home devices, orders food,
 ### 1. Clone and install dependencies
 
 ```bash
-git clone https://github.com/rohanpatil1794/personal-ai-assistant.git
+git clone <your-repo-url>
 cd personal-ai-assistant
 python -m venv venv
 venv\Scripts\activate        # Windows
@@ -188,10 +188,20 @@ utils/                  Logger, custom exceptions
 
 ## Deployment (Cloudflare Tunnel)
 
+1. Install [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/get-started/)
+2. Log in and create a tunnel:
+
 ```powershell
 cloudflared tunnel login
-cloudflared tunnel create rvhome
-cloudflared tunnel route dns rvhome asistant.rvhome.space
+cloudflared tunnel create <tunnel-name>
+cloudflared tunnel route dns <tunnel-name> <your-subdomain.yourdomain.com>
 cloudflared service install   # run as Administrator — auto-starts on boot
+```
+
+3. Start the server:
+
+```powershell
 uvicorn server:app --host 0.0.0.0 --port 8000
 ```
+
+The assistant will be accessible at `https://your-subdomain.yourdomain.com`.
