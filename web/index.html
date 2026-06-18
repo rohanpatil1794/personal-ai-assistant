@@ -5,53 +5,84 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ronny</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=3">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css?v=4">
 </head>
 <body>
 
-  <!-- Ambient background layer (always moving) -->
+  <!-- Particle + grid canvas -->
   <canvas id="bg-canvas" aria-hidden="true"></canvas>
-  <div class="bg-blobs" aria-hidden="true">
-    <div class="bg-blob bg-blob-1"></div>
-    <div class="bg-blob bg-blob-2"></div>
-    <div class="bg-blob bg-blob-3"></div>
-    <div class="bg-blob bg-blob-4"></div>
+
+  <!-- PCB circuit-track canvas (drawn on top of grid, behind HUD) -->
+  <canvas id="circuit-canvas" aria-hidden="true"></canvas>
+
+  <!-- HUD frame — corner brackets + scan line -->
+  <div class="hud-frame" aria-hidden="true">
+    <div class="hud-corner hud-tl"></div>
+    <div class="hud-corner hud-tr"></div>
+    <div class="hud-corner hud-bl"></div>
+    <div class="hud-corner hud-br"></div>
+    <div class="hud-scan"></div>
   </div>
 
-  <!-- Intro overlay -->
+  <!-- Intro overlay — JARVIS boot sequence -->
   <div id="intro" aria-hidden="true">
-    <div class="intro-inner">
+    <div class="intro-boot" id="intro-boot">
+      <div class="intro-boot-header">
+        <span class="intro-bracket">[</span>
+        <span class="intro-boot-title">R·O·N·N·Y PROTOCOL v1.0</span>
+        <span class="intro-bracket">]</span>
+      </div>
+      <ul class="intro-boot-lines">
+        <li class="intro-boot-line" id="boot-1"></li>
+        <li class="intro-boot-line" id="boot-2"></li>
+        <li class="intro-boot-line" id="boot-3"></li>
+        <li class="intro-boot-line" id="boot-4"></li>
+      </ul>
+      <div class="intro-progress-wrap">
+        <div class="intro-progress-track">
+          <div class="intro-progress-bar"></div>
+        </div>
+        <span class="intro-progress-pct">0%</span>
+      </div>
+    </div>
+    <div class="intro-reveal" id="intro-reveal">
       <div class="intro-orb-wrap">
         <div class="intro-ring intro-ring-1"></div>
         <div class="intro-ring intro-ring-2"></div>
-        <div class="intro-orb">
-          <div class="intro-orb-gloss"></div>
-        </div>
+        <div class="intro-orb"><div class="intro-orb-gloss"></div></div>
       </div>
       <div class="intro-text-wrap">
-        <p class="intro-name">Ronny</p>
+        <p class="intro-name">R.O.N.N.Y</p>
         <div class="intro-divider"></div>
-        <p class="intro-tagline">Personal AI Assistant</p>
+        <p class="intro-tagline">PERSONAL AI ASSISTANT — ONLINE</p>
       </div>
     </div>
-    <p class="intro-skip">Tap anywhere to continue</p>
+    <p class="intro-skip">[ TAP OR PRESS ANY KEY TO CONTINUE ]</p>
   </div>
 
   <header>
     <div class="logo-row">
       <div id="status-dot" class="status-dot"></div>
-      <span class="logo-name">Ronny</span>
+      <span class="logo-name">RONNY</span>
+      <span class="logo-sep">//</span>
       <span class="logo-tag">Personal AI Assistant</span>
     </div>
   </header>
 
   <main>
-    <div class="sphere-scene">
-      <div class="sphere-glow"></div>
-      <div id="sphere" class="idle" role="img" aria-label="Assistant state"></div>
-      <div class="sphere-ring"></div>
-      <div class="sphere-gloss"></div>
+    <!-- Orbit rings + sphere (perspective container) -->
+    <div class="orbit-system">
+      <div class="orbit-ring orbit-r1"></div>
+      <div class="orbit-ring orbit-r2"></div>
+      <div class="orbit-ring orbit-r3"></div>
+
+      <div class="sphere-scene">
+        <div class="sphere-glow"></div>
+        <div id="sphere" class="idle" role="img" aria-label="Assistant state"></div>
+        <div class="sphere-ring"></div>
+        <div class="sphere-gloss"></div>
+      </div>
     </div>
 
     <div id="waveform" aria-hidden="true">
@@ -59,13 +90,13 @@
       <span></span><span></span><span></span><span></span><span></span>
     </div>
 
-    <p id="status-label">Hold Space or tap to speak</p>
+    <p id="status-label">STANDBY // HOLD SPACE TO SPEAK</p>
 
     <div id="caption-box" aria-live="polite" aria-atomic="true"></div>
 
     <div id="controls">
       <button id="conv-btn" aria-label="Start conversation mode">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
           <circle cx="12" cy="19" r="3"/>
         </svg>
@@ -73,9 +104,9 @@
       </button>
 
       <div id="text-row">
-        <input id="text-input" type="text" placeholder="Type a message…" autocomplete="off" aria-label="Type a message">
+        <input id="text-input" type="text" placeholder="// Type a message…" autocomplete="off" aria-label="Type a message">
         <button id="send-btn" aria-label="Send">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="22" y1="2" x2="11" y2="13"/>
             <polygon points="22 2 15 22 11 13 2 9 22 2"/>
           </svg>
@@ -107,6 +138,6 @@
     <div id="order-bar-timer"></div>
   </div>
 
-  <script src="/static/app.js?v=4"></script>
+  <script src="/static/app.js?v=5"></script>
 </body>
 </html>
