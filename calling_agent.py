@@ -177,24 +177,36 @@ async def entrypoint(ctx: JobContext) -> None:
     log.info("calling_agent: job started call_id=%s number=%s", call_id, phone_number)
 
     system_prompt = (
-        f"You are Ronny, Rohan's personal AI assistant, making a phone call on his behalf. "
+        f"You are Ronny, the user's personal AI assistant, making a phone call on their behalf. "
         f"Speak ONLY as yourself — never write the other person's lines or stage directions. "
         f"Keep each reply to 1-2 short sentences, exactly like a real phone conversation. "
         f"Your goal:\n"
-        f"1. When the call connects, introduce yourself: 'Hi, I'm Ronny, Rohan's personal AI assistant.'\n"
+        f"1. Introduce yourself: 'Hi, I'm Ronny, [user's] personal AI assistant.'\n"
         f"2. Deliver this message clearly: {message}\n"
-        f"   Important: Always refer to Rohan in third person (e.g. 'Rohan will be late', not 'I will be late'). You are Ronny, not Rohan.\n"
+        f"   Important: Always refer to the user in third person. You are Ronny, not the user.\n"
         f"3. Listen for their response and note: {extract_intent}.\n"
-        f"4. Thank them politely and say goodbye once the message is delivered and acknowledged.\n"
+        f"4. Once the message is delivered and acknowledged, say a brief goodbye and call end_call immediately.\n"
+        f"5. If they do not respond within a few seconds after you speak, call end_call.\n"
         f"Do not narrate, do not script the other person's side, do not add stage directions."
     )
+
+    # Signals
+    call_ended = asyncio.Event()
+    participant_left = asyncio.Event()
+
+    # Tool the LLM calls to hang up
+    @agents.function_tool
+    async def end_call() -> str:
+        """End the phone call. Call this as soon as the message has been delivered and acknowledged, or after saying goodbye."""
+        call_ended.set()
+        return "Call ended."
 
     stt_plugin = SarvamSTT()
     tts_plugin = SarvamTTS()
     llm_plugin = lk_groq.LLM(model="llama-3.1-8b-instant", api_key=GROQ_API_KEY)
     vad_plugin = silero.VAD.load()
 
-    # Wait for the SIP participant to join before starting the session
+    # Wait for the SIP participant to join
     try:
         sip_participant = await asyncio.wait_for(ctx.wait_for_participant(), timeout=60)
     except asyncio.TimeoutError:
@@ -204,6 +216,12 @@ async def entrypoint(ctx: JobContext) -> None:
 
     log.info("calling_agent: participant joined identity=%s", sip_participant.identity)
 
+    # Track disconnect event
+    @ctx.room.on("participant_disconnected")
+    def on_disconnect(participant):
+        if participant.identity == sip_participant.identity:
+            participant_left.set()
+
     session = AgentSession(
         stt=stt_plugin,
         llm=llm_plugin,
@@ -211,41 +229,60 @@ async def entrypoint(ctx: JobContext) -> None:
         vad=vad_plugin,
     )
 
-    # start() with capture_run=True blocks until session ends (participant disconnect or timeout)
     await session.start(
-        Agent(instructions=system_prompt),
+        Agent(
+            instructions=system_prompt,
+            tools=[end_call],
+            # End turn quickly if there's silence — helps detect when to hang up
+            max_endpointing_delay=3.0,
+        ),
         room=ctx.room,
         room_input_options=RoomInputOptions(participant_identity=sip_participant.identity),
-        capture_run=True,
     )
 
-    # Open the call with introduction + message
+    # Open with introduction + message
     await session.generate_reply(
         instructions=(
-            f"Introduce yourself: 'Hi, I'm Ronny, Rohan's personal AI assistant.' "
-            f"Then immediately deliver this message, referring to Rohan in third person: {message}"
+            f"Introduce yourself: 'Hi, I'm Ronny, the user's personal AI assistant.' "
+            f"Then immediately deliver this message in third person: {message}"
         )
     )
 
-    # Wait for participant to disconnect (max 5 minutes)
+    # Wait until: agent calls end_call, participant hangs up, or 5-min max
     try:
         async with asyncio.timeout(300):
-            while sip_participant.identity in ctx.room.remote_participants:
-                await asyncio.sleep(1)
-    except (asyncio.TimeoutError, Exception):
-        pass
+            while not call_ended.is_set() and not participant_left.is_set():
+                await asyncio.sleep(0.5)
+    except asyncio.TimeoutError:
+        log.warning("calling_agent: call hit 5-minute limit call_id=%s", call_id)
 
-    await session.aclose()
+    # If agent ended it, remove the SIP participant (hang up our side)
+    if call_ended.is_set() and not participant_left.is_set():
+        try:
+            from livekit.api import LiveKitAPI, RoomParticipantIdentity
+            async with LiveKitAPI(
+                os.getenv("LIVEKIT_URL"),
+                os.getenv("LIVEKIT_API_KEY"),
+                os.getenv("LIVEKIT_API_SECRET"),
+            ) as lk:
+                await lk.room.remove_participant(RoomParticipantIdentity(
+                    room=ctx.room.name,
+                    identity=sip_participant.identity,
+                ))
+            log.info("calling_agent: hung up call_id=%s", call_id)
+            await asyncio.sleep(1)  # let disconnect propagate
+        except Exception as e:
+            log.warning("calling_agent: hangup failed: %s", e)
 
-    # Gather transcript from chat context
+    # Gather transcript — build a full summary for Ronny to report
     try:
-        messages = session.chat_ctx.messages
-        user_messages = [
-            str(m.content) for m in messages
+        chat_messages = session.chat_ctx.messages
+        user_msgs = [
+            str(m.content) for m in chat_messages
             if hasattr(m, "role") and str(m.role) == "user" and m.content
         ]
-        response = user_messages[-1] if user_messages else None
-        summary = f"{contact_name} said: {response}" if response else f"Call with {contact_name} ended."
+        response = user_msgs[-1] if user_msgs else None
+        summary = f"{contact_name} said: {response}" if response else f"Call with {contact_name} completed, no response captured."
     except Exception as e:
         log.warning("calling_agent: could not read transcript: %s", e)
         response = None

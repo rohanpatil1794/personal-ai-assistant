@@ -6,7 +6,7 @@
   <title>Ronny</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/style.css?v=2">
 </head>
 <body>
 
@@ -16,73 +16,46 @@
       <span class="logo-name">Ronny</span>
       <span class="logo-tag">Personal AI Assistant</span>
     </div>
-    <button id="clear-btn" aria-label="Clear conversation">Clear</button>
   </header>
 
   <main>
-
-    <!-- Left: sphere + controls -->
-    <div id="sphere-panel">
-      <div class="sphere-scene">
-        <div class="sphere-glow"></div>
-        <div id="sphere" class="idle" role="img" aria-label="Assistant state"></div>
-        <div class="sphere-ring"></div>
-        <div class="sphere-gloss"></div>
-      </div>
-
-      <div id="waveform" aria-hidden="true">
-        <span></span><span></span><span></span><span></span><span></span>
-        <span></span><span></span><span></span><span></span><span></span>
-      </div>
-
-      <p id="status-label">Hold Space or tap to speak</p>
-
-      <!-- Controls -->
-      <div id="controls">
-        <button id="conv-btn" aria-label="Start conversation mode">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
-            <circle cx="12" cy="19" r="3"/>
-          </svg>
-          <span id="conv-label">Start conversation</span>
-        </button>
-
-        <button id="ptt-btn" aria-label="Hold to talk">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-            <line x1="12" y1="19" x2="12" y2="22"/>
-          </svg>
-          <span id="ptt-label">Hold to talk</span>
-        </button>
-
-        <div id="text-row">
-          <input id="text-input" type="text" placeholder="Type a message…" autocomplete="off" aria-label="Type a message">
-          <button id="send-btn" aria-label="Send">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <line x1="22" y1="2" x2="11" y2="13"/>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-            </svg>
-          </button>
-        </div>
-      </div>
+    <div class="sphere-scene">
+      <div class="sphere-glow"></div>
+      <div id="sphere" class="idle" role="img" aria-label="Assistant state"></div>
+      <div class="sphere-ring"></div>
+      <div class="sphere-gloss"></div>
     </div>
 
-    <!-- Right: conversation history -->
-    <div id="caption-panel">
-      <!-- Empty state -->
-      <div id="empty-state">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    <div id="waveform" aria-hidden="true">
+      <span></span><span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span><span></span>
+    </div>
+
+    <p id="status-label">Hold Space or tap to speak</p>
+
+    <!-- Disappearing caption — shown when agent speaks -->
+    <div id="caption-box" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- Controls -->
+    <div id="controls">
+      <button id="conv-btn" aria-label="Start conversation mode">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+          <circle cx="12" cy="19" r="3"/>
         </svg>
-        <h2>How can I help?</h2>
-        <p>Hold the talk button or Space bar to speak — or type a message.</p>
+        <span id="conv-label">Start conversation</span>
+      </button>
+
+      <div id="text-row">
+        <input id="text-input" type="text" placeholder="Type a message…" autocomplete="off" aria-label="Type a message">
+        <button id="send-btn" aria-label="Send">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
       </div>
-
-      <!-- Persistent conversation history -->
-      <div id="messages" role="log" aria-live="polite" aria-label="Conversation history"></div>
     </div>
-
   </main>
 
   <!-- Slide-up order confirmation bar -->
@@ -108,6 +81,6 @@
     <div id="order-bar-timer"></div>
   </div>
 
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=2"></script>
 </body>
 </html>

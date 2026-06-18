@@ -4,13 +4,9 @@ const sphere          = document.getElementById('sphere');
 const statusDot       = document.getElementById('status-dot');
 const statusLabel     = document.getElementById('status-label');
 const waveform        = document.getElementById('waveform');
-const pttBtn          = document.getElementById('ptt-btn');
-const pttLabel        = document.getElementById('ptt-label');
+const captionBox      = document.getElementById('caption-box');
 const textInput       = document.getElementById('text-input');
 const sendBtn         = document.getElementById('send-btn');
-const emptyState      = document.getElementById('empty-state');
-const messagesEl      = document.getElementById('messages');
-const clearBtn        = document.getElementById('clear-btn');
 const orderBar        = document.getElementById('order-bar');
 const orderBarText    = document.getElementById('order-bar-text');
 const orderBarTimer   = document.getElementById('order-bar-timer');
@@ -24,22 +20,25 @@ let mediaRecorder = null;
 let audioChunks = [];
 let audioCtx = null;
 let busy = false;
-let thinkingEl = null;
 let orderDismissTimer = null;
+
+// Caption state
+let captionEl = null;
+let captionFadeTimer = null;
 
 // ============================================================
 // VAD / Conversation mode
 // ============================================================
 
-const VAD_RMS_THRESHOLD     = 0.012; // tune for ambient noise
-const VAD_START_DEBOUNCE_MS = 200;   // must be above threshold this long to start
-const VAD_STOP_DEBOUNCE_MS  = 1200;  // must be below threshold this long to stop
-const CONV_TIMEOUT_MS       = 30000; // end conv mode after 30s total silence
-const ARMED_PROMPT_MS       = 5000;  // after 5s in armed state, ask "are you there?"
-const ARMED_IDLE_MS         = 5000;  // 5s after prompt with no reply → exit conv mode
+const VAD_RMS_THRESHOLD     = 0.012;
+const VAD_START_DEBOUNCE_MS = 200;
+const VAD_STOP_DEBOUNCE_MS  = 1200;
+const CONV_TIMEOUT_MS       = 30000;
+const ARMED_PROMPT_MS       = 5000;
+const ARMED_IDLE_MS         = 5000;
 
 let convMode        = false;
-let vadStream       = null;    // kept alive for full session
+let vadStream       = null;
 let vadAnalyser     = null;
 let vadRafId        = null;
 let vadSpeaking     = false;
@@ -71,7 +70,7 @@ function startArmedTimers() {
   resetArmedTimers();
   armedPromptTimer = setTimeout(() => {
     if (!convMode || vadSpeaking || busy) return;
-    sendText('are you still there?', true); // silent — don't show in chat
+    sendText('are you still there?', true);
     armedIdleTimer = setTimeout(() => {
       if (convMode && !vadSpeaking && !busy) stopConvMode();
     }, ARMED_IDLE_MS);
@@ -210,78 +209,56 @@ function setState(s, customLabel) {
   statusLabel.textContent = customLabel ?? LABELS[s] ?? s;
   waveform.classList.toggle('active', s === 'listening');
 
-  if (!convMode) {
-    if (s === 'listening') {
-      pttBtn.classList.add('listening');
-      pttLabel.textContent = 'Release to send';
-    } else {
-      pttBtn.classList.remove('listening');
-      pttLabel.textContent = 'Hold to talk';
-    }
-  }
-
   const locked = s === 'thinking' || s === 'speaking';
   textInput.disabled = locked;
   sendBtn.disabled   = locked;
 
-  if (s === 'thinking') {
-    showThinking();
-  } else {
-    hideThinking();
-  }
-
-  // Restart inactivity timers whenever we go armed
   if (s === 'armed' && convMode) {
     startArmedTimers();
   }
 }
 
 // ============================================================
-// Conversation history
+// Disappearing captions
 // ============================================================
 
-function appendMessage(role, text) {
-  emptyState.classList.add('hidden');
-  clearBtn.classList.add('visible');
+const CAPTION_LINGER_MS = 3500; // how long caption stays after audio ends
 
-  const div = document.createElement('div');
-  div.className = `msg msg-${role}`;
-  div.textContent = text;
-  messagesEl.appendChild(div);
-  scrollToBottom();
-}
+function showCaption(text) {
+  clearTimeout(captionFadeTimer);
 
-function showThinking() {
-  if (thinkingEl) return;
-  thinkingEl = document.createElement('div');
-  thinkingEl.className = 'msg msg-assistant msg-thinking';
-  thinkingEl.innerHTML =
-    '<span class="thinking-dot"></span>' +
-    '<span class="thinking-dot"></span>' +
-    '<span class="thinking-dot"></span>';
-  messagesEl.appendChild(thinkingEl);
-  scrollToBottom();
-}
-
-function hideThinking() {
-  if (thinkingEl) {
-    thinkingEl.remove();
-    thinkingEl = null;
+  // Remove existing caption instantly if present
+  if (captionEl) {
+    captionEl.remove();
+    captionEl = null;
   }
+
+  const el = document.createElement('span');
+  el.className = 'caption-text';
+  el.textContent = text;
+  captionBox.appendChild(el);
+  captionEl = el;
+
+  // Trigger fade-in on next frame
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => el.classList.add('visible'));
+  });
 }
 
-function scrollToBottom() {
-  messagesEl.scrollTop = messagesEl.scrollHeight;
+function fadeCaption() {
+  if (!captionEl) return;
+  captionFadeTimer = setTimeout(() => {
+    if (!captionEl) return;
+    captionEl.classList.remove('visible');
+    captionEl.classList.add('fading');
+    const el = captionEl;
+    captionEl = null;
+    setTimeout(() => el.remove(), 700);
+  }, CAPTION_LINGER_MS);
 }
-
-clearBtn.addEventListener('click', () => {
-  messagesEl.innerHTML = '';
-  emptyState.classList.remove('hidden');
-  clearBtn.classList.remove('visible');
-});
 
 // ============================================================
-// Order confirmation bar — slides up, auto-dismisses in 15s
+// Order confirmation bar
 // ============================================================
 
 const ORDER_TIMEOUT = 15000;
@@ -304,7 +281,7 @@ function showOrderBar(orderSummary) {
 
   orderBarTimer.style.transition = 'none';
   orderBarTimer.style.transform = 'scaleX(1)';
-  orderBarTimer.getBoundingClientRect(); // force reflow
+  orderBarTimer.getBoundingClientRect();
   orderBarTimer.style.transition = `transform ${ORDER_TIMEOUT}ms linear`;
   orderBarTimer.style.transform = 'scaleX(0)';
 
@@ -359,19 +336,18 @@ async function playBase64Audio(b64) {
 // Core pipeline
 // ============================================================
 
-async function handleResponse(data, transcriptText) {
-  if (transcriptText) appendMessage('user', transcriptText);
-
+async function handleResponse(data) {
   if (data.confirmation_required && data.order_summary) {
     showOrderBar(data.order_summary);
   }
 
   setState('speaking');
-  if (data.reply) appendMessage('assistant', data.reply);
+  if (data.reply) showCaption(data.reply);
   await playBase64Audio(data.audio_b64);
+  fadeCaption();
 
   if (convMode) {
-    setState('armed'); // re-arm VAD — RAF loop already running
+    setState('armed');
   } else {
     setState('idle');
   }
@@ -386,7 +362,7 @@ async function sendVoiceBlob(blob) {
     const res = await fetch('/api/voice', { method: 'POST', body: form });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.statusText);
     const data = await res.json();
-    await handleResponse(data, data.transcript);
+    await handleResponse(data);
   } catch (e) {
     console.error(e);
     setState('error', e.message);
@@ -397,13 +373,9 @@ async function sendVoiceBlob(blob) {
   }
 }
 
-// silent: true → don't show user message (used for internal "are you there?" probe)
 async function sendText(text, silent = false) {
   if (!text.trim() || busy) return;
   busy = true;
-
-  const isSentinel = text === '__confirm_order__' || text === 'cancel the order' || silent;
-  if (!isSentinel) appendMessage('user', text);
 
   setState('thinking');
   try {
@@ -414,7 +386,7 @@ async function sendText(text, silent = false) {
     });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.statusText);
     const data = await res.json();
-    await handleResponse(data, null);
+    await handleResponse(data);
   } catch (e) {
     console.error(e);
     setState('error', e.message);
@@ -426,7 +398,7 @@ async function sendText(text, silent = false) {
 }
 
 // ============================================================
-// MediaRecorder (PTT — fallback mode)
+// MediaRecorder (PTT — Space bar)
 // ============================================================
 
 async function startRecording() {
@@ -462,12 +434,6 @@ function stopRecording() {
 // ============================================================
 // Event listeners
 // ============================================================
-
-pttBtn.addEventListener('mousedown',  e => { e.preventDefault(); startRecording(); });
-pttBtn.addEventListener('mouseup',    () => stopRecording());
-pttBtn.addEventListener('mouseleave', () => stopRecording());
-pttBtn.addEventListener('touchstart', e => { e.preventDefault(); startRecording(); }, { passive: false });
-pttBtn.addEventListener('touchend',   e => { e.preventDefault(); stopRecording(); },  { passive: false });
 
 document.addEventListener('keydown', e => {
   if (e.code === 'Space' && document.activeElement === document.body && !e.repeat) {
