@@ -18,3 +18,4 @@ fix_config.ps1
 fix_tunnel.ps1
 register_task.ps1
 ronny_task.xml
+contacts.json
