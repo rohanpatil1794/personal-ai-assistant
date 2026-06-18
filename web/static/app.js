@@ -33,9 +33,9 @@ let captionFadeTimer = null;
 const VAD_RMS_THRESHOLD     = 0.012;
 const VAD_START_DEBOUNCE_MS = 200;
 const VAD_STOP_DEBOUNCE_MS  = 1200;
-const CONV_TIMEOUT_MS       = 30000;
-const ARMED_PROMPT_MS       = 5000;
-const ARMED_IDLE_MS         = 5000;
+const CONV_TIMEOUT_MS       = 60000; // exit conv mode after 60s total silence
+const ARMED_PROMPT_MS       = 15000; // wait 15s before asking "are you still there?"
+const ARMED_IDLE_MS         = 10000; // wait another 10s then exit conv mode
 
 let convMode        = false;
 let vadStream       = null;
@@ -130,6 +130,7 @@ function startVADRecording() {
     vadSpeechStart  = 0;
     vadSilenceStart = 0;
     const blob = new Blob(vadChunks, { type: vadMediaRec.mimeType });
+    resetArmedTimers(); // clear any stale timers before handing off
     if (convMode) setState('armed');
     if (blob.size > 1000) sendVoiceBlob(blob);
     else if (convMode) startArmedTimers();
@@ -212,10 +213,6 @@ function setState(s, customLabel) {
   const locked = s === 'thinking' || s === 'speaking';
   textInput.disabled = locked;
   sendBtn.disabled   = locked;
-
-  if (s === 'armed' && convMode) {
-    startArmedTimers();
-  }
 }
 
 // ============================================================
