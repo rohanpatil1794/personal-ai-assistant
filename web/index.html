@@ -6,9 +6,37 @@
   <title>Ronny</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=2">
+  <link rel="stylesheet" href="/static/style.css?v=3">
 </head>
 <body>
+
+  <!-- Ambient background layer (always moving) -->
+  <canvas id="bg-canvas" aria-hidden="true"></canvas>
+  <div class="bg-blobs" aria-hidden="true">
+    <div class="bg-blob bg-blob-1"></div>
+    <div class="bg-blob bg-blob-2"></div>
+    <div class="bg-blob bg-blob-3"></div>
+    <div class="bg-blob bg-blob-4"></div>
+  </div>
+
+  <!-- Intro overlay -->
+  <div id="intro" aria-hidden="true">
+    <div class="intro-inner">
+      <div class="intro-orb-wrap">
+        <div class="intro-ring intro-ring-1"></div>
+        <div class="intro-ring intro-ring-2"></div>
+        <div class="intro-orb">
+          <div class="intro-orb-gloss"></div>
+        </div>
+      </div>
+      <div class="intro-text-wrap">
+        <p class="intro-name">Ronny</p>
+        <div class="intro-divider"></div>
+        <p class="intro-tagline">Personal AI Assistant</p>
+      </div>
+    </div>
+    <p class="intro-skip">Tap anywhere to continue</p>
+  </div>
 
   <header>
     <div class="logo-row">
@@ -33,10 +61,8 @@
 
     <p id="status-label">Hold Space or tap to speak</p>
 
-    <!-- Disappearing caption — shown when agent speaks -->
     <div id="caption-box" aria-live="polite" aria-atomic="true"></div>
 
-    <!-- Controls -->
     <div id="controls">
       <button id="conv-btn" aria-label="Start conversation mode">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -81,6 +107,6 @@
     <div id="order-bar-timer"></div>
   </div>
 
-  <script src="/static/app.js?v=3"></script>
+  <script src="/static/app.js?v=4"></script>
 </body>
 </html>

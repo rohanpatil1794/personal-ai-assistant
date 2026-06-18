@@ -1,5 +1,114 @@
 /* Ronny — Voice-first minimalist UI */
 
+// ============================================================
+// Background particle system (canvas — always running)
+// ============================================================
+
+(function initParticles() {
+  const canvas = document.getElementById('bg-canvas');
+  if (!canvas) return;
+
+  const ctx = canvas.getContext('2d');
+  const COLORS = ['#4f8ef7', '#67e8f9', '#a5b4fc', '#e0e7ff', '#fff'];
+  const WEIGHTS = [0.3, 0.2, 0.2, 0.15, 0.15]; // probability weight per color
+  const COUNT = 75;
+
+  function pickColor() {
+    let r = Math.random(), acc = 0;
+    for (let i = 0; i < WEIGHTS.length; i++) {
+      acc += WEIGHTS[i];
+      if (r < acc) return COLORS[i];
+    }
+    return COLORS[0];
+  }
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize, { passive: true });
+
+  class Particle {
+    constructor(born) {
+      this.reset(born);
+    }
+    reset(born) {
+      this.x     = Math.random() * canvas.width;
+      this.y     = born ? Math.random() * canvas.height : canvas.height + 8;
+      this.r     = Math.random() * 1.6 + 0.4;
+      this.vx    = (Math.random() - 0.5) * 0.25;
+      this.vy    = -(Math.random() * 0.35 + 0.08);
+      this.alpha = Math.random() * 0.45 + 0.1;
+      this.phase = Math.random() * Math.PI * 2;
+      this.freq  = Math.random() * 0.018 + 0.006;
+      this.color = pickColor();
+    }
+    step() {
+      this.x     += this.vx;
+      this.y     += this.vy;
+      this.phase += this.freq;
+      if (this.y < -10 || this.x < -10 || this.x > canvas.width + 10) {
+        this.reset(false);
+      }
+    }
+    draw() {
+      const a = this.alpha * (0.55 + 0.45 * Math.sin(this.phase));
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.shadowBlur  = this.r * 5;
+      ctx.shadowColor = this.color;
+      ctx.fillStyle   = this.color;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  const particles = Array.from({ length: COUNT }, () => new Particle(true));
+
+  // Respect reduced-motion — stop loop but keep canvas transparent
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (prefersReduced) return;
+
+  (function loop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => { p.step(); p.draw(); });
+    requestAnimationFrame(loop);
+  })();
+})();
+
+// ============================================================
+// Intro sequence
+// ============================================================
+
+(function initIntro() {
+  const intro = document.getElementById('intro');
+  if (!intro) return;
+
+  // Respect reduced-motion — skip intro entirely
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    intro.classList.add('done');
+    return;
+  }
+
+  function dismiss() {
+    intro.classList.add('done');
+  }
+
+  // Auto-dismiss after 3s
+  const timer = setTimeout(dismiss, 3000);
+
+  // Tap / keydown to skip
+  intro.addEventListener('click', () => { clearTimeout(timer); dismiss(); }, { once: true });
+  document.addEventListener('keydown', () => { clearTimeout(timer); dismiss(); }, { once: true });
+})();
+
+// ============================================================
+// Main app
+// ============================================================
+
 const sphere          = document.getElementById('sphere');
 const statusDot       = document.getElementById('status-dot');
 const statusLabel     = document.getElementById('status-label');
@@ -33,9 +142,9 @@ let captionFadeTimer = null;
 const VAD_RMS_THRESHOLD     = 0.012;
 const VAD_START_DEBOUNCE_MS = 200;
 const VAD_STOP_DEBOUNCE_MS  = 1200;
-const CONV_TIMEOUT_MS       = 60000; // exit conv mode after 60s total silence
-const ARMED_PROMPT_MS       = 15000; // wait 15s before asking "are you still there?"
-const ARMED_IDLE_MS         = 10000; // wait another 10s then exit conv mode
+const CONV_TIMEOUT_MS       = 60000;
+const ARMED_PROMPT_MS       = 15000;
+const ARMED_IDLE_MS         = 10000;
 
 let convMode        = false;
 let vadStream       = null;
@@ -130,7 +239,7 @@ function startVADRecording() {
     vadSpeechStart  = 0;
     vadSilenceStart = 0;
     const blob = new Blob(vadChunks, { type: vadMediaRec.mimeType });
-    resetArmedTimers(); // clear any stale timers before handing off
+    resetArmedTimers();
     if (convMode) setState('armed');
     if (blob.size > 1000) sendVoiceBlob(blob);
     else if (convMode) startArmedTimers();
@@ -219,16 +328,11 @@ function setState(s, customLabel) {
 // Disappearing captions
 // ============================================================
 
-const CAPTION_LINGER_MS = 3500; // how long caption stays after audio ends
+const CAPTION_LINGER_MS = 3500;
 
 function showCaption(text) {
   clearTimeout(captionFadeTimer);
-
-  // Remove existing caption instantly if present
-  if (captionEl) {
-    captionEl.remove();
-    captionEl = null;
-  }
+  if (captionEl) { captionEl.remove(); captionEl = null; }
 
   const el = document.createElement('span');
   el.className = 'caption-text';
@@ -236,7 +340,6 @@ function showCaption(text) {
   captionBox.appendChild(el);
   captionEl = el;
 
-  // Trigger fade-in on next frame
   requestAnimationFrame(() => {
     requestAnimationFrame(() => el.classList.add('visible'));
   });
@@ -300,7 +403,6 @@ orderConfirmBtn.addEventListener('click', () => {
   hideOrderBar();
   sendText('__confirm_order__');
 });
-
 orderCancelBtn.addEventListener('click', () => {
   hideOrderBar();
   sendText('cancel the order');
@@ -395,7 +497,7 @@ async function sendText(text, silent = false) {
 }
 
 // ============================================================
-// MediaRecorder (PTT — Space bar)
+// PTT — Space bar
 // ============================================================
 
 async function startRecording() {

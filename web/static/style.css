@@ -34,14 +34,240 @@ body {
   font-size: 15px;
   color: var(--text);
   background: #06091a;
-  background-image:
-    radial-gradient(ellipse 80% 60% at 50% 40%, #0c1f5e 0%, transparent 65%),
-    radial-gradient(ellipse 50% 40% at 50% 70%, #080e2e 0%, transparent 70%);
   display: flex;
   flex-direction: column;
   -webkit-font-smoothing: antialiased;
   color-scheme: dark;
   user-select: none;
+}
+
+/* ============================================================
+   Ambient background — canvas + blobs (always moving)
+   ============================================================ */
+
+#bg-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.bg-blobs {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.bg-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  pointer-events: none;
+  will-change: transform;
+}
+
+.bg-blob-1 {
+  width: 550px; height: 550px;
+  background: radial-gradient(circle, #1e40af 0%, transparent 70%);
+  opacity: 0.18;
+  top: -160px; left: -160px;
+  animation: blob-1 22s ease-in-out infinite;
+}
+.bg-blob-2 {
+  width: 450px; height: 450px;
+  background: radial-gradient(circle, #4338ca 0%, transparent 70%);
+  opacity: 0.14;
+  bottom: -140px; right: -100px;
+  animation: blob-2 28s ease-in-out infinite;
+}
+.bg-blob-3 {
+  width: 320px; height: 320px;
+  background: radial-gradient(circle, #0891b2 0%, transparent 70%);
+  opacity: 0.12;
+  top: 45%; left: 55%;
+  animation: blob-3 19s ease-in-out infinite;
+}
+.bg-blob-4 {
+  width: 280px; height: 280px;
+  background: radial-gradient(circle, #3730a3 0%, transparent 70%);
+  opacity: 0.1;
+  top: 20%; right: 10%;
+  animation: blob-4 24s ease-in-out infinite;
+}
+
+@keyframes blob-1 {
+  0%,100% { transform: translate(0,0) scale(1); }
+  25%      { transform: translate(80px,70px) scale(1.12); }
+  50%      { transform: translate(40px,-50px) scale(0.94); }
+  75%      { transform: translate(-30px,90px) scale(1.06); }
+}
+@keyframes blob-2 {
+  0%,100% { transform: translate(0,0) scale(1); }
+  30%      { transform: translate(-70px,-60px) scale(1.08); }
+  60%      { transform: translate(-40px,50px) scale(0.96); }
+  80%      { transform: translate(50px,-30px) scale(1.04); }
+}
+@keyframes blob-3 {
+  0%,100% { transform: translate(0,0) scale(1); }
+  33%      { transform: translate(-60px,50px) scale(1.1); }
+  66%      { transform: translate(50px,-40px) scale(0.92); }
+}
+@keyframes blob-4 {
+  0%,100% { transform: translate(0,0) scale(1); }
+  40%      { transform: translate(-50px,60px) scale(1.15); }
+  70%      { transform: translate(40px,30px) scale(0.9); }
+}
+
+/* ============================================================
+   Intro overlay
+   ============================================================ */
+
+#intro {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(4, 6, 18, 0.92);
+  backdrop-filter: blur(2px);
+  transition: opacity 700ms ease, visibility 700ms ease;
+}
+
+#intro.done {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.intro-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+/* Orb + rings */
+.intro-orb-wrap {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.intro-orb {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  position: relative;
+  background: radial-gradient(circle at 35% 28%,
+    #cce0ff 0%, #7ab5ff 18%, #3b82f6 42%, #1d4ed8 65%, #0a1628 100%);
+  box-shadow:
+    0 0 80px rgba(79,142,247,0.75),
+    0 0 180px rgba(59,130,246,0.35),
+    inset 0 -24px 48px rgba(0,0,0,0.45);
+  opacity: 0;
+  transform: scale(0.08);
+  animation: orb-appear 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) 0.35s forwards,
+             orb-breathe 4s ease-in-out 1.5s infinite;
+}
+
+.intro-orb-gloss {
+  position: absolute;
+  top: 22px; left: 38px;
+  width: 52px; height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.22);
+  filter: blur(5px);
+  pointer-events: none;
+}
+
+@keyframes orb-appear {
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes orb-breathe {
+  0%,100% { box-shadow: 0 0 80px rgba(79,142,247,0.65), 0 0 160px rgba(59,130,246,0.25), inset 0 -24px 48px rgba(0,0,0,0.45); }
+  50%      { box-shadow: 0 0 110px rgba(79,142,247,0.85), 0 0 240px rgba(59,130,246,0.4), inset 0 -24px 48px rgba(0,0,0,0.45); }
+}
+
+.intro-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px solid rgba(79, 142, 247, 0.55);
+  pointer-events: none;
+}
+.intro-ring-1 {
+  width: 180px; height: 180px;
+  animation: ring-expand 2.4s ease-out 1.2s infinite;
+}
+.intro-ring-2 {
+  width: 180px; height: 180px;
+  animation: ring-expand 2.4s ease-out 2.4s infinite;
+}
+
+@keyframes ring-expand {
+  0%   { transform: scale(1); opacity: 0.7; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+/* Intro text */
+.intro-text-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.intro-name {
+  font-size: 3rem;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: -0.02em;
+  opacity: 0;
+  transform: translateY(12px);
+  animation: text-rise 0.7s cubic-bezier(0.2, 0, 0.1, 1) 1.1s forwards;
+  text-shadow: 0 0 40px rgba(79,142,247,0.6);
+}
+
+.intro-divider {
+  width: 32px;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(79,142,247,0.5), transparent);
+  opacity: 0;
+  animation: text-rise 0.5s ease 1.4s forwards;
+}
+
+.intro-tagline {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: text-rise 0.6s cubic-bezier(0.2, 0, 0.1, 1) 1.5s forwards;
+}
+
+@keyframes text-rise {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.intro-skip {
+  position: absolute;
+  bottom: 2.5rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+  opacity: 0;
+  animation: text-rise 0.5s ease 2.2s forwards;
+  cursor: pointer;
 }
 
 /* ============================================================
@@ -53,6 +279,8 @@ header {
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
+  position: relative;
+  z-index: 2;
 }
 
 .logo-row {
@@ -105,6 +333,8 @@ main {
   padding: 2rem 1.5rem 2.5rem;
   overflow: hidden;
   min-height: 0;
+  position: relative;
+  z-index: 2;
 }
 
 /* ============================================================
@@ -241,7 +471,6 @@ main {
   0%,100% { opacity: 0.55; box-shadow: 0 0 30px rgba(79,142,247,0.2), inset 0 -24px 48px rgba(0,0,0,0.45); }
   50%      { opacity: 0.75; box-shadow: 0 0 55px rgba(79,142,247,0.35), inset 0 -24px 48px rgba(0,0,0,0.45); }
 }
-
 @keyframes idle-breathe {
   0%,100% { box-shadow: 0 0 50px rgba(79,142,247,0.45), 0 0 100px rgba(59,130,246,0.15), inset 0 -24px 48px rgba(0,0,0,0.45); }
   50%      { box-shadow: 0 0 80px rgba(79,142,247,0.65), 0 0 160px rgba(59,130,246,0.25), inset 0 -24px 48px rgba(0,0,0,0.45); }
@@ -315,7 +544,7 @@ main {
 }
 
 /* ============================================================
-   Caption box — disappearing subtitles when agent speaks
+   Caption box
    ============================================================ */
 #caption-box {
   min-height: 4.5rem;
@@ -339,12 +568,10 @@ main {
   transition: opacity 300ms ease, transform 300ms ease;
   max-width: 100%;
 }
-
 #caption-box .caption-text.visible {
   opacity: 1;
   transform: translateY(0);
 }
-
 #caption-box .caption-text.fading {
   opacity: 0;
   transform: translateY(-4px);
@@ -453,7 +680,7 @@ button:focus-visible, input:focus-visible {
 }
 
 /* ============================================================
-   Slide-up order confirmation bar
+   Order confirmation bar
    ============================================================ */
 #order-bar {
   position: fixed;
@@ -508,8 +735,7 @@ button:focus-visible, input:focus-visible {
 }
 
 #order-cancel-btn {
-  width: 36px;
-  height: 36px;
+  width: 36px; height: 36px;
   border-radius: 50%;
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.1);
@@ -549,9 +775,11 @@ button:focus-visible, input:focus-visible {
 }
 
 /* ============================================================
-   Reduced motion
+   Reduced motion — skip intro, pause blobs/particles
    ============================================================ */
 @media (prefers-reduced-motion: reduce) {
+  #intro { display: none; }
+  .bg-blob { animation: none !important; }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
@@ -566,6 +794,10 @@ button:focus-visible, input:focus-visible {
   main { gap: 0.85rem; padding: 1.5rem 1rem 2rem; }
   .sphere-scene { width: 180px; height: 180px; }
   #sphere { width: 170px; height: 170px; }
+  .intro-orb { width: 150px; height: 150px; }
+  .intro-orb-wrap { width: 170px; height: 170px; }
+  .intro-ring-1, .intro-ring-2 { width: 150px; height: 150px; }
+  .intro-name { font-size: 2.4rem; }
   #caption-box { min-height: 3.5rem; }
   #caption-box .caption-text { font-size: 0.95rem; }
   #controls { max-width: 100%; }
