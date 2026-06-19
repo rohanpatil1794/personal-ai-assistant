@@ -2,6 +2,7 @@ import base64
 import httpx
 from utils.exceptions import TTSError
 from utils.logger import get_logger
+from utils.retry import with_retry
 
 log = get_logger(__name__)
 
@@ -20,11 +21,7 @@ def validate_speaker(api_key: str, speaker: str, language_code: str = "en-IN") -
         return "rahul"
 
 
-def synthesize(text: str, api_key: str, language_code: str = "en-IN", speaker: str = "rahul") -> bytes:
-    """
-    Send text to Sarvam TTS and return WAV bytes.
-    """
-    log.info("tts: synthesizing", text=text[:60])
+def _tts_request(text: str, api_key: str, language_code: str, speaker: str) -> bytes:
     try:
         resp = httpx.post(
             SARVAM_TTS_URL,
@@ -51,6 +48,12 @@ def synthesize(text: str, api_key: str, language_code: str = "en-IN", speaker: s
     audio_b64 = data.get("audios", [None])[0]
     if not audio_b64:
         raise TTSError("Sarvam TTS returned no audio data.")
-    wav_bytes = base64.b64decode(audio_b64)
+    return base64.b64decode(audio_b64)
+
+
+def synthesize(text: str, api_key: str, language_code: str = "en-IN", speaker: str = "rahul") -> bytes:
+    """Send text to Sarvam TTS and return WAV bytes (retries up to 3x)."""
+    log.info("tts: synthesizing", text=text[:60])
+    wav_bytes = with_retry(_tts_request, text, api_key, language_code, speaker, retries=3, initial_delay=1.0)
     log.info("tts: audio received", bytes=len(wav_bytes))
     return wav_bytes

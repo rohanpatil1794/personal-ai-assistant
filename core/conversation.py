@@ -105,8 +105,9 @@ class ConversationManager:
         except Exception as e:
             raise LLMError(f"LLM send_message failed: {e}") from e
 
-        # Tool-call loop
-        while True:
+        # Tool-call loop — capped to prevent runaway chains
+        MAX_TOOL_ITERATIONS = 10
+        for iteration in range(MAX_TOOL_ITERATIONS):
             message = response.choices[0].message
 
             if message.tool_calls:
@@ -127,3 +128,6 @@ class ConversationManager:
                 reply = (message.content or "").strip()
                 log.info("conversation: assistant reply", text=reply[:100])
                 return reply
+
+        log.error("conversation: tool-call loop hit max iterations", max=MAX_TOOL_ITERATIONS)
+        raise LLMError("Tool-call loop exceeded maximum iterations — possible runaway chain.")

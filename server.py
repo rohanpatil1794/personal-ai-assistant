@@ -5,10 +5,16 @@ Replaces the desktop CustomTkinter UI with a browser-based interface.
 import base64
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from pathlib import Path
+
+from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 from starlette.concurrency import run_in_threadpool
 
 from config.settings import load_settings
@@ -36,6 +42,20 @@ _settings = None
 _conv: ConversationManager | None = None
 _tts_speaker: str = "rahul"
 _call_store: CallStore | None = None
+
+# Rate limiter — 10 requests per minute per IP on voice/text endpoints
+limiter = Limiter(key_func=get_remote_address)
+
+# Bearer token auth
+_security = HTTPBearer(auto_error=False)
+
+
+async def verify_token(credentials: HTTPAuthorizationCredentials | None = Depends(_security)) -> None:
+    """Enforce bearer token auth when API_TOKEN is configured."""
+    if not _settings or not _settings.API_TOKEN:
+        return  # No token set — dev mode, allow all (log a warning at startup)
+    if credentials is None or credentials.scheme.lower() != "bearer" or credentials.credentials != _settings.API_TOKEN:
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
 
 @asynccontextmanager
@@ -80,15 +100,20 @@ async def lifespan(app: FastAPI):
     ha_integration = registry.get_integration("ha")
     _conv = ConversationManager(llm, ha_integration, registry)
     await run_in_threadpool(_conv.start)
+
+    if not _settings.API_TOKEN:
+        log.warning("server: API_TOKEN is not set — all /api/* endpoints are unprotected. Set API_TOKEN in .env for production.")
     log.info("server: Ronny is ready")
     yield
 
 
 app = FastAPI(title="Ronny", lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 class TextRequest(BaseModel):
-    text: str
+    text: str = Field(..., min_length=1, max_length=10_000)
 
 
 class AssistantResponse(BaseModel):
@@ -104,7 +129,7 @@ async def _llm_and_tts(user_text: str) -> AssistantResponse:
         reply = await run_in_threadpool(_conv.send, user_text)
     except Exception as e:
         log.error("server: LLM error", error=str(e))
-        raise HTTPException(status_code=502, detail=f"LLM error: {e}")
+        raise HTTPException(status_code=502, detail="Assistant service unavailable. Please try again.")
 
     try:
         wav_bytes = await run_in_threadpool(
@@ -112,7 +137,7 @@ async def _llm_and_tts(user_text: str) -> AssistantResponse:
         )
     except Exception as e:
         log.error("server: TTS error", error=str(e))
-        raise HTTPException(status_code=502, detail=f"TTS error: {e}")
+        raise HTTPException(status_code=502, detail="Voice service unavailable. Please try again.")
 
     pending = _conv.get_pending_order()
 
@@ -130,7 +155,8 @@ async def status():
 
 
 @app.post("/api/voice", response_model=AssistantResponse)
-async def voice(file: UploadFile = File(...)):
+@limiter.limit("10/minute")
+async def voice(request: Request, file: UploadFile = File(...), _: None = Depends(verify_token)):
     audio_bytes = await file.read()
     try:
         transcript = await run_in_threadpool(
@@ -138,7 +164,7 @@ async def voice(file: UploadFile = File(...)):
         )
     except Exception as e:
         log.error("server: STT error", error=str(e))
-        raise HTTPException(status_code=502, detail=f"STT error: {e}")
+        raise HTTPException(status_code=502, detail="Voice recognition unavailable. Please try again.")
 
     if not transcript:
         raise HTTPException(status_code=422, detail="No speech detected.")
@@ -150,9 +176,8 @@ async def voice(file: UploadFile = File(...)):
 
 
 @app.post("/api/text", response_model=AssistantResponse)
-async def text_input(req: TextRequest):
-    if not req.text.strip():
-        raise HTTPException(status_code=422, detail="Empty input.")
+@limiter.limit("10/minute")
+async def text_input(request: Request, req: TextRequest, _: None = Depends(verify_token)):
     log.info("server: text input", text=req.text)
     return await _llm_and_tts(req.text.strip())
 
@@ -184,7 +209,7 @@ async def call_result_webhook(payload: CallResultPayload):
 
 
 @app.get("/api/calls")
-async def list_calls():
+async def list_calls(_: None = Depends(verify_token)):
     """List recent call records."""
     if _call_store is None:
         return {"calls": []}
@@ -209,4 +234,13 @@ app.mount("/static", StaticFiles(directory="web/static"), name="static")
 
 @app.get("/{full_path:path}")
 async def spa(full_path: str):
-    return FileResponse("web/index.html")
+    # Inject the API token as a JS global so the frontend can auth its requests
+    html = Path("web/index.html").read_text(encoding="utf-8")
+    token = _settings.API_TOKEN if _settings else ""
+    import json
+    html = html.replace(
+        "</head>",
+        f'<script>window.RONNY_API_TOKEN={json.dumps(token)};</script>\n</head>',
+        1,
+    )
+    return HTMLResponse(html)

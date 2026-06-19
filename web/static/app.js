@@ -1,5 +1,10 @@
 /* Ronny — Voice-first minimalist UI */
 
+function apiHeaders() {
+  const token = window.RONNY_API_TOKEN;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 const sphere          = document.getElementById('sphere');
 const statusDot       = document.getElementById('status-dot');
 const statusLabel     = document.getElementById('status-label');
@@ -359,7 +364,7 @@ async function sendVoiceBlob(blob) {
   try {
     const form = new FormData();
     form.append('file', blob, 'audio.webm');
-    const res = await fetch('/api/voice', { method: 'POST', body: form });
+    const res = await fetch('/api/voice', { method: 'POST', body: form, headers: apiHeaders() });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.statusText);
     const data = await res.json();
     await handleResponse(data);
@@ -381,7 +386,7 @@ async function sendText(text, silent = false) {
   try {
     const res = await fetch('/api/text', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...apiHeaders() },
       body: JSON.stringify({ text }),
     });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.statusText);

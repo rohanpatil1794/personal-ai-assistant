@@ -14,6 +14,11 @@ class Settings(BaseSettings):
     TTS_SPEAKER: str = "rahul"
     TTS_LANGUAGE: str = "en-IN"
 
+    # API security — set a strong random token to protect all /api/* endpoints
+    # Generate one with: python -c "import secrets; print(secrets.token_hex(32))"
+    # If left blank, endpoints are unprotected (dev-only, never leave blank in production)
+    API_TOKEN: str = ""
+
     # LiveKit — calling module (optional; leave blank to disable)
     LIVEKIT_URL: str = ""
     LIVEKIT_API_KEY: str = ""
