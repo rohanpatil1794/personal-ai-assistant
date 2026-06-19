@@ -38,9 +38,9 @@ let captionFadeTimer = null;
 const VAD_RMS_THRESHOLD     = 0.012;
 const VAD_START_DEBOUNCE_MS = 200;
 const VAD_STOP_DEBOUNCE_MS  = 1200;
-const CONV_TIMEOUT_MS       = 30000;
-const ARMED_PROMPT_MS       = 5000;
-const ARMED_IDLE_MS         = 5000;
+const CONV_TIMEOUT_MS       = 120000;
+const ARMED_PROMPT_MS       = 8000;
+const ARMED_IDLE_MS         = 8000;
 
 let convMode        = false;
 let vadStream       = null;
@@ -85,7 +85,9 @@ function startArmedTimers() {
 function resetConvTimeout() {
   clearTimeout(convTimeoutTimer);
   convTimeoutTimer = setTimeout(() => {
-    if (convMode) stopConvMode();
+    if (!convMode) return;
+    if (busy) { resetConvTimeout(); return; }  // request in flight — extend
+    stopConvMode();
   }, CONV_TIMEOUT_MS);
 }
 
