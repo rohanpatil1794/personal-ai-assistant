@@ -38,7 +38,7 @@ let captionFadeTimer = null;
 const VAD_RMS_THRESHOLD     = 0.012;
 const VAD_START_DEBOUNCE_MS = 200;
 const VAD_STOP_DEBOUNCE_MS  = 1200;
-const CONV_TIMEOUT_MS       = 120000;
+const CONV_TIMEOUT_MS       = 300000;  // 5 min — Groq retries can stack to 100s+
 const ARMED_PROMPT_MS       = 8000;
 const ARMED_IDLE_MS         = 8000;
 
@@ -93,6 +93,7 @@ function vadLoop() {
   if (!convMode) return;
   vadRafId = requestAnimationFrame(vadLoop);
   if (busy || state === 'speaking') return;  // don't capture while assistant is talking
+  if (audioCtx && audioCtx.state === 'suspended') { audioCtx.resume(); return; }
 
   const rms = computeRMS(vadAnalyser);
 
@@ -208,8 +209,6 @@ const LABELS = {
 };
 
 function setState(s, customLabel) {
-  // Never visually idle while a request is still in flight
-  if (busy && s === 'idle') return;
   state = s;
   sphere.className = s;
   statusDot.className = `status-dot ${s}`;
@@ -361,6 +360,20 @@ async function handleResponse(data) {
   }
 }
 
+function _afterRequest() {
+  // Called in every finally block after busy=false.
+  // Reconciles UI state: if convMode got stopped during the request,
+  // ensure sphere is idle; if still active, arm VAD and resume AudioContext.
+  if (convMode) {
+    // Resume AudioContext in case the browser suspended it during a long wait
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    if (state !== 'armed' && state !== 'speaking') setState('armed');
+    startArmedTimers();
+  } else {
+    if (state !== 'idle') setState('idle');
+  }
+}
+
 async function sendVoiceBlob(blob) {
   busy = true;
   setState('thinking');
@@ -377,7 +390,7 @@ async function sendVoiceBlob(blob) {
     setTimeout(() => convMode ? setState('armed') : setState('idle'), 3000);
   } finally {
     busy = false;
-    if (convMode) startArmedTimers();
+    _afterRequest();
   }
 }
 
@@ -414,7 +427,7 @@ async function sendText(text, silent = false) {
     setTimeout(() => convMode ? setState('armed') : setState('idle'), 3000);
   } finally {
     busy = false;
-    if (convMode) startArmedTimers();
+    _afterRequest();
   }
 }
 
