@@ -208,6 +208,8 @@ const LABELS = {
 };
 
 function setState(s, customLabel) {
+  // Never visually idle while a request is still in flight
+  if (busy && s === 'idle') return;
   state = s;
   sphere.className = s;
   statusDot.className = `status-dot ${s}`;
