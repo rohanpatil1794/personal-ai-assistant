@@ -92,7 +92,7 @@ function resetConvTimeout() {
 function vadLoop() {
   if (!convMode) return;
   vadRafId = requestAnimationFrame(vadLoop);
-  if (busy) return;
+  if (busy || state === 'speaking') return;  // don't capture while assistant is talking
 
   const rms = computeRMS(vadAnalyser);
 

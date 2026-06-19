@@ -47,12 +47,14 @@ class GoogleCalendarClient:
 
     def list_events(self, days_ahead: int = 7) -> list[dict]:
         self._ensure_available()
-        now = datetime.now(timezone.utc)
-        end = now + timedelta(days=days_ahead)
+        # Start from midnight IST today so events earlier today are included
+        IST = timezone(timedelta(hours=5, minutes=30))
+        today_midnight = datetime.now(IST).replace(hour=0, minute=0, second=0, microsecond=0)
+        end = today_midnight + timedelta(days=days_ahead)
         try:
             result = self._service.events().list(
                 calendarId="primary",
-                timeMin=now.isoformat(),
+                timeMin=today_midnight.isoformat(),
                 timeMax=end.isoformat(),
                 maxResults=20,
                 singleEvents=True,
