@@ -76,9 +76,7 @@ function startArmedTimers() {
   armedPromptTimer = setTimeout(() => {
     if (!convMode || vadSpeaking || busy) return;
     sendText('are you still there?', true);
-    armedIdleTimer = setTimeout(() => {
-      if (convMode && !vadSpeaking && !busy) stopConvMode();
-    }, ARMED_IDLE_MS);
+    // No idle shutdown here — conv timeout (CONV_TIMEOUT_MS) handles final cleanup
   }, ARMED_PROMPT_MS);
 }
 
@@ -354,6 +352,7 @@ async function handleResponse(data) {
   fadeCaption();
 
   if (convMode) {
+    resetConvTimeout();   // reset 120s window after every exchange
     setState('armed');
   } else {
     setState('idle');
