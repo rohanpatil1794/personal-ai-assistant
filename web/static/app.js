@@ -382,8 +382,21 @@ async function sendVoiceBlob(blob) {
 
 async function sendText(text, silent = false) {
   if (!text.trim() || busy) return;
-  busy = true;
 
+  // Silent pings ("are you still there?") must not block VAD —
+  // fire in the background without locking the UI or setting busy.
+  if (silent) {
+    fetch('/api/text', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...apiHeaders() },
+      body: JSON.stringify({ text }),
+    }).then(r => r.ok ? r.json() : null).then(data => {
+      if (data && convMode) handleResponse(data);
+    }).catch(() => {});
+    return;
+  }
+
+  busy = true;
   setState('thinking');
   try {
     const res = await fetch('/api/text', {
