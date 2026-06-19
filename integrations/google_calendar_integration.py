@@ -37,7 +37,7 @@ class GoogleCalendarIntegration(Integration):
                 return {"success": True, "event": event}
 
             elif tool_name == "calendar_delete_event":
-                self._gcal.delete_event(args["event_id"])
+                self._gcal.delete_event(args["event_id"], calendar_id=args.get("calendar_id"))
                 return {"success": True, "event_id": args["event_id"]}
 
             elif tool_name == "calendar_check_availability":

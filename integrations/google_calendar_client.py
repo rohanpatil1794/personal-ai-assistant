@@ -11,6 +11,7 @@ from utils.logger import get_logger
 log = get_logger(__name__)
 
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
+IST = timezone(timedelta(hours=5, minutes=30))
 
 
 class GoogleCalendarError(Exception):
@@ -22,6 +23,7 @@ class GoogleCalendarClient:
         self._token_path = token_path
         self._credentials_path = credentials_path
         self._service = None
+        self._calendar_ids: list[str] | None = None  # cached list of all calendar IDs
 
         if os.path.exists(token_path):
             self._service = self._build_service()
@@ -45,35 +47,59 @@ class GoogleCalendarClient:
         if not self.available:
             raise GoogleCalendarError("Google Calendar is not authorized. Run integrations/google_auth.py first.")
 
+    def _get_calendar_ids(self) -> list[str]:
+        """Return all writable calendar IDs for this account (cached)."""
+        if self._calendar_ids is not None:
+            return self._calendar_ids
+        try:
+            result = self._service.calendarList().list().execute()
+            calendars = result.get("items", [])
+            # Include all calendars the user can write to (own + shared editable)
+            ids = [c["id"] for c in calendars if c.get("accessRole") in ("owner", "writer")]
+            if not ids:
+                ids = ["primary"]
+            self._calendar_ids = ids
+            log.info("google_calendar: discovered calendars", count=len(ids), ids=ids)
+        except HttpError:
+            self._calendar_ids = ["primary"]
+        return self._calendar_ids
+
     def list_events(self, days_ahead: int = 7) -> list[dict]:
         self._ensure_available()
         # Start from midnight IST today so events earlier today are included
-        IST = timezone(timedelta(hours=5, minutes=30))
         today_midnight = datetime.now(IST).replace(hour=0, minute=0, second=0, microsecond=0)
         end = today_midnight + timedelta(days=days_ahead)
-        try:
-            result = self._service.events().list(
-                calendarId="primary",
-                timeMin=today_midnight.isoformat(),
-                timeMax=end.isoformat(),
-                maxResults=20,
-                singleEvents=True,
-                orderBy="startTime",
-            ).execute()
-            events = result.get("items", [])
-            return [
-                {
-                    "id": e["id"],
-                    "summary": e.get("summary", "(No title)"),
-                    "start": e["start"].get("dateTime", e["start"].get("date")),
-                    "end": e["end"].get("dateTime", e["end"].get("date")),
-                    "location": e.get("location", ""),
-                    "description": e.get("description", ""),
-                }
-                for e in events
-            ]
-        except HttpError as e:
-            raise GoogleCalendarError(f"Failed to list events: {e}") from e
+        time_min = today_midnight.isoformat()
+        time_max = end.isoformat()
+
+        all_events: list[dict] = []
+        for cal_id in self._get_calendar_ids():
+            try:
+                result = self._service.events().list(
+                    calendarId=cal_id,
+                    timeMin=time_min,
+                    timeMax=time_max,
+                    maxResults=50,
+                    singleEvents=True,
+                    orderBy="startTime",
+                ).execute()
+                for e in result.get("items", []):
+                    all_events.append({
+                        "id": e["id"],
+                        "calendar_id": cal_id,
+                        "summary": e.get("summary", "(No title)"),
+                        "start": e["start"].get("dateTime", e["start"].get("date")),
+                        "end": e["end"].get("dateTime", e["end"].get("date")),
+                        "location": e.get("location", ""),
+                        "description": e.get("description", ""),
+                    })
+            except HttpError as e:
+                log.warning("google_calendar: failed to list events for calendar", cal_id=cal_id, error=str(e))
+
+        # Sort all results by start time
+        all_events.sort(key=lambda e: e["start"])
+        log.info("google_calendar: list_events", total=len(all_events), calendars=len(self._get_calendar_ids()))
+        return all_events
 
     def create_event(
         self,
@@ -99,27 +125,37 @@ class GoogleCalendarClient:
         except HttpError as e:
             raise GoogleCalendarError(f"Failed to create event: {e}") from e
 
-    def delete_event(self, event_id: str) -> bool:
+    def delete_event(self, event_id: str, calendar_id: str | None = None) -> bool:
         self._ensure_available()
-        try:
-            self._service.events().delete(calendarId="primary", eventId=event_id).execute()
-            return True
-        except HttpError as e:
-            raise GoogleCalendarError(f"Failed to delete event: {e}") from e
+        # If caller knows which calendar, use it directly
+        candidates = [calendar_id] if calendar_id else self._get_calendar_ids()
+        for cal_id in candidates:
+            try:
+                self._service.events().delete(calendarId=cal_id, eventId=event_id).execute()
+                return True
+            except HttpError as e:
+                if e.resp.status == 404:
+                    continue  # not on this calendar, try next
+                raise GoogleCalendarError(f"Failed to delete event: {e}") from e
+        raise GoogleCalendarError(f"Event {event_id} not found on any calendar.")
 
     def check_availability(self, date: str) -> dict:
         """Returns busy periods and free slots for a given date (YYYY-MM-DD)."""
         self._ensure_available()
-        day_start = datetime.fromisoformat(f"{date}T00:00:00").astimezone(timezone.utc)
-        day_end = datetime.fromisoformat(f"{date}T23:59:59").astimezone(timezone.utc)
+        day_start = datetime.fromisoformat(f"{date}T00:00:00").replace(tzinfo=IST)
+        day_end = datetime.fromisoformat(f"{date}T23:59:59").replace(tzinfo=IST)
         try:
             body = {
                 "timeMin": day_start.isoformat(),
                 "timeMax": day_end.isoformat(),
-                "items": [{"id": "primary"}],
+                "items": [{"id": cal_id} for cal_id in self._get_calendar_ids()],
             }
             result = self._service.freebusy().query(body=body).execute()
-            busy = result["calendars"]["primary"]["busy"]
-            return {"date": date, "busy_periods": busy, "is_free_all_day": len(busy) == 0}
+            # Merge busy periods across all calendars
+            all_busy = []
+            for cal_data in result.get("calendars", {}).values():
+                all_busy.extend(cal_data.get("busy", []))
+            all_busy.sort(key=lambda b: b["start"])
+            return {"date": date, "busy_periods": all_busy, "is_free_all_day": len(all_busy) == 0}
         except HttpError as e:
             raise GoogleCalendarError(f"Failed to check availability: {e}") from e

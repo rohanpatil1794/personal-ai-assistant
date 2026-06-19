@@ -60,7 +60,11 @@ GOOGLE_CALENDAR_TOOLS = [
                     "event_id": {
                         "type": "string",
                         "description": "The Google Calendar event ID to delete.",
-                    }
+                    },
+                    "calendar_id": {
+                        "type": "string",
+                        "description": "The calendar ID the event belongs to, as returned by calendar_list_events. Pass this if known to speed up deletion.",
+                    },
                 },
                 "required": ["event_id"],
             },
