@@ -182,19 +182,31 @@ async def entrypoint(ctx: JobContext) -> None:
     extract_intent = meta.get("extract_intent", "their response")
     callback_url = meta.get("callback_url", f"{CALLBACK_BASE}/api/internal/call-result")
 
-    log.info("calling_agent: job started call_id=%s number=%s", call_id, phone_number)
+    # Load the user's real name from profile.json
+    user_name = "the user"
+    try:
+        import json as _json
+        from pathlib import Path as _Path
+        _prof = _json.loads(_Path("profile.json").read_text(encoding="utf-8"))
+        user_name = _prof.get("name", "").strip() or "the user"
+    except Exception:
+        pass
+
+    log.info("calling_agent: job started call_id=%s number=%s user=%s", call_id, phone_number, user_name)
 
     system_prompt = (
-        f"You are Ronny, the user's personal AI assistant, making a phone call on their behalf. "
+        f"You are Ronny, {user_name}'s personal AI assistant, making a phone call on their behalf. "
         f"Speak ONLY as yourself — never write the other person's lines or stage directions. "
         f"Keep each reply to 1-2 short sentences, exactly like a real phone conversation. "
+        f"IMPORTANT: You are NOT {user_name}. You are Ronny, calling on their behalf. "
+        f"Always refer to {user_name} in third person — never say 'I' when meaning {user_name}. "
+        f"For example, if the message is 'I will be late', say '{user_name} will be late'. "
         f"Your goal:\n"
-        f"1. Introduce yourself: 'Hi, I'm Ronny, [user's] personal AI assistant.'\n"
-        f"2. Deliver this message clearly: {message}\n"
-        f"   Important: Always refer to the user in third person. You are Ronny, not the user.\n"
-        f"3. Listen for their response and note: {extract_intent}.\n"
-        f"4. Once the message is delivered and acknowledged, say a brief goodbye and call end_call immediately.\n"
-        f"5. If they do not respond within a few seconds after you speak, call end_call.\n"
+        f"1. You have already introduced yourself. Now deliver this message, converting any first-person "
+        f"   references ('I', 'my', 'me') to '{user_name}': {message}\n"
+        f"2. Listen for their response and note: {extract_intent}.\n"
+        f"3. Once the message is delivered and acknowledged, say a brief goodbye and call end_call immediately.\n"
+        f"4. If they do not respond within a few seconds after you speak, call end_call.\n"
         f"Do not narrate, do not script the other person's side, do not add stage directions."
     )
 
@@ -248,13 +260,16 @@ async def entrypoint(ctx: JobContext) -> None:
     )
 
     # Speak the greeting immediately via say() — skips the LLM so audio starts ~2s faster.
-    # While it plays, the LLM can prepare the actual message in parallel.
-    greeting = f"Hi, I'm Ronny, {contact_name}'s personal AI assistant."
+    greeting = f"Hi, I'm Ronny, {user_name}'s personal AI assistant."
     await session.say(greeting)
 
-    # Now generate and deliver the actual message via LLM
+    # Deliver the actual message — LLM must convert any first-person to user_name
     await session.generate_reply(
-        instructions=f"Deliver this message clearly in third person: {message}. After delivering it, listen for their response."
+        instructions=(
+            f"Deliver the following message to the person on the call. "
+            f"Convert any first-person references ('I', 'my', 'me') to '{user_name}'. "
+            f"Speak naturally in 1-2 sentences: {message}"
+        )
     )
 
     # Wait until: agent calls end_call, participant hangs up, or 5-min max
