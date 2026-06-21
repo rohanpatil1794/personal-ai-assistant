@@ -182,17 +182,13 @@ async def entrypoint(ctx: JobContext) -> None:
     extract_intent = meta.get("extract_intent", "their response")
     callback_url = meta.get("callback_url", f"{CALLBACK_BASE}/api/internal/call-result")
 
-    # Load the user's real name from profile.json
-    user_name = "the user"
-    try:
-        import json as _json
-        from pathlib import Path as _Path
-        _prof = _json.loads(_Path("profile.json").read_text(encoding="utf-8"))
-        user_name = _prof.get("name", "").strip() or "the user"
-    except Exception:
-        pass
+    # Load the user's real name from profile
+    import sys as _sys, os as _os
+    _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+    from utils.profile import load as _load_profile
+    user_name = _load_profile().get("name", "").strip() or "the user"
 
-    log.info("calling_agent: job started call_id=%s number=%s user=%s", call_id, phone_number, user_name)
+    log.info("calling_agent: job started call_id=%s number=%s user_name=%s", call_id, phone_number, user_name)
 
     system_prompt = (
         f"You are Ronny, {user_name}'s personal AI assistant, making a phone call on their behalf. "
