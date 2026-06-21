@@ -145,70 +145,102 @@ async function loadCallLogs() {
   }
 }
 
+function fmtTime(isoStr) {
+  if (!isoStr) return '';
+  const d = new Date(isoStr);
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function fmtDate(isoStr) {
+  if (!isoStr) return '';
+  const d = new Date(isoStr);
+  const today = new Date();
+  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return 'Today';
+  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
+function fmtDuration(ts, completedAt) {
+  if (!ts || !completedAt) return null;
+  const secs = Math.round((new Date(completedAt) - new Date(ts)) / 1000);
+  if (secs < 0) return null;
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return m > 0 ? `${m}:${String(s).padStart(2, '0')}` : `0:${String(s).padStart(2, '0')}`;
+}
+
+function phoneIcon(status) {
+  const color = (status === 'completed') ? 'var(--green)' : 'var(--red)';
+  return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="call-log-icon">
+    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.63 3.36 2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.77a16 16 0 0 0 6.29 6.29l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+  </svg>`;
+}
+
 function renderCallLogs(calls) {
   if (!calls || calls.length === 0) {
     callLogList.innerHTML = '<p class="contact-empty">No calls placed yet.</p>';
     return;
   }
-  callLogList.innerHTML = '';
-  for (const call of calls) {
-    const item = document.createElement('div');
-    item.className = 'call-log-item';
 
-    const ts = call.ts ? call.ts.replace('T', ' ').slice(0, 16) : '';
+  const list = document.createElement('div');
+  list.className = 'call-log-list';
+
+  for (const call of calls) {
     const contact = call.contact || call.phone || 'Unknown';
     const status = call.status || 'unknown';
+    const initial = contact[0].toUpperCase();
+    const duration = fmtDuration(call.ts, call.completed_at);
+    const timeStr = fmtTime(call.ts);
+    const dateStr = fmtDate(call.ts);
     const turns = Array.isArray(call.transcript) ? call.transcript : [];
-    const contactInitial = contact[0].toUpperCase();
 
-    // Header (always visible, click to expand)
+    const subParts = [call.phone ? esc(call.phone) : null, dateStr, timeStr, duration].filter(Boolean);
+
+    const item = document.createElement('div');
+    item.className = `call-log-item status-${esc(status)}`;
+
     const header = document.createElement('div');
     header.className = 'call-log-header';
     header.innerHTML = `
-      <span class="call-log-contact">${esc(contact)}</span>
-      <span class="call-log-meta">
-        <span class="call-log-pill ${esc(status)}">${esc(status)}</span>
-        <span class="call-log-ts">${esc(ts)}</span>
-      </span>
+      <div class="call-log-avatar">${esc(initial)}</div>
+      <div class="call-log-info">
+        <div class="call-log-name">${esc(contact)}</div>
+        <div class="call-log-sub">${subParts.map((p, i) => i === 0 ? p : `<span class="call-log-sub-dot">·</span>${p}`).join('')}</div>
+      </div>
+      <div class="call-log-right">
+        <span class="call-log-time">${esc(dateStr)}</span>
+        ${phoneIcon(status)}
+      </div>
       <svg class="call-log-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="9 18 15 12 9 6"/>
       </svg>`;
 
-    // Body (transcript, hidden by default)
     const body = document.createElement('div');
     body.className = 'call-log-body';
-
-    if (call.mission) {
-      const m = document.createElement('p');
-      m.className = 'call-log-mission';
-      m.textContent = call.mission;
-      body.appendChild(m);
-    }
 
     if (turns.length === 0) {
       const empty = document.createElement('p');
       empty.className = 'call-no-transcript';
-      empty.textContent = 'No transcript captured for this call.';
+      empty.textContent = 'No transcript available for this call.';
       body.appendChild(empty);
     } else {
       for (const turn of turns) {
         const div = document.createElement('div');
         div.className = `call-turn ${esc(turn.role)}`;
-        div.innerHTML = `
-          <div class="call-turn-avatar">${turn.role === 'assistant' ? 'AI' : esc(contactInitial)}</div>
-          <div class="call-turn-bubble">${esc(turn.text)}</div>`;
+        div.innerHTML = `<div class="call-turn-bubble">${esc(turn.text)}</div>`;
         body.appendChild(div);
       }
     }
 
-    header.addEventListener('click', () => {
-      item.classList.toggle('open');
-    });
-
+    header.addEventListener('click', () => item.classList.toggle('open'));
     item.appendChild(header);
     item.appendChild(body);
-    callLogList.appendChild(item);
+    list.appendChild(item);
   }
+
+  callLogList.innerHTML = '';
+  callLogList.appendChild(list);
 }
 
 // ============================================================

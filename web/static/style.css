@@ -765,134 +765,160 @@ header {
 }
 
 /* ============================================================
-   Call logs (inside profile page)
+   Call logs — phone-style list inside profile page
    ============================================================ */
+
+/* Outer list */
+.call-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Each call row */
 .call-log-item {
-  border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
-  transition: border-color 150ms;
+  transition: background 150ms;
 }
-.call-log-item + .call-log-item { margin-top: 0.5rem; }
-.call-log-item:hover { border-color: rgba(255,255,255,0.12); }
 
+/* Collapsed header — mimics phone call log */
 .call-log-header {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  padding: 0.65rem 0.85rem;
+  gap: 0.75rem;
+  padding: 0.7rem 0.6rem;
   cursor: pointer;
   user-select: none;
-  background: rgba(255,255,255,0.02);
+  border-radius: 12px;
   transition: background 150ms;
 }
 .call-log-header:hover { background: rgba(255,255,255,0.04); }
-
-.call-log-contact {
-  flex: 1;
-  font-size: 0.88rem;
-  font-weight: 500;
-  color: var(--text);
-  text-transform: capitalize;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.call-log-meta {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  flex-shrink: 0;
-}
-.call-log-ts {
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-.call-log-chevron {
-  color: var(--text-dim);
-  transition: transform 200ms ease;
-  flex-shrink: 0;
-}
-.call-log-item.open .call-log-chevron { transform: rotate(90deg); }
-
-.call-log-pill {
-  padding: 1px 7px;
-  border-radius: 99px;
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  flex-shrink: 0;
-}
-.call-log-pill.completed { background: rgba(52,211,153,0.15);  color: var(--green); }
-.call-log-pill.failed    { background: rgba(248,113,113,0.15); color: var(--red); }
-.call-log-pill.no-answer { background: rgba(251,191,36,0.15);  color: var(--amber); }
-.call-log-pill.dialing   { background: rgba(79,142,247,0.15);  color: var(--accent); }
-
-.call-log-body {
-  display: none;
-  padding: 0 0.85rem 0.85rem;
-  flex-direction: column;
-  gap: 0.5rem;
-  border-top: 1px solid var(--border);
-}
-.call-log-item.open .call-log-body { display: flex; }
-
-.call-log-mission {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  font-style: italic;
-  padding: 0.5rem 0 0.25rem;
+.call-log-item.open .call-log-header {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  background: rgba(255,255,255,0.03);
 }
 
-.call-turn {
-  display: flex;
-  gap: 0.5rem;
-  max-width: 100%;
-}
-.call-turn.user { flex-direction: row-reverse; align-self: flex-end; }
-
-.call-turn-avatar {
-  width: 24px;
-  height: 24px;
+/* Avatar circle */
+.call-log-avatar {
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  flex-shrink: 0;
+  background: rgba(79,142,247,0.15);
+  color: var(--accent);
+  font-size: 0.95rem;
+  font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.6rem;
-  font-weight: 700;
-  margin-top: 2px;
+  flex-shrink: 0;
+  text-transform: uppercase;
 }
-.call-turn.assistant .call-turn-avatar { background: rgba(79,142,247,0.2); color: var(--accent); }
-.call-turn.user      .call-turn-avatar { background: rgba(52,211,153,0.2);  color: var(--green); }
+.call-log-item.status-no-answer .call-log-avatar,
+.call-log-item.status-failed    .call-log-avatar {
+  background: rgba(248,113,113,0.12);
+  color: var(--red);
+}
+
+/* Text block */
+.call-log-info { flex: 1; min-width: 0; }
+.call-log-name {
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--text);
+  text-transform: capitalize;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.call-log-item.status-no-answer .call-log-name,
+.call-log-item.status-failed    .call-log-name { color: var(--red); }
+
+.call-log-sub {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 1px;
+  font-size: 0.73rem;
+  color: var(--text-muted);
+}
+.call-log-sub-dot { opacity: 0.4; }
+
+/* Right side — time + phone icon */
+.call-log-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.call-log-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.call-log-icon { color: var(--green); }
+.call-log-item.status-no-answer .call-log-icon,
+.call-log-item.status-failed    .call-log-icon { color: var(--red); }
+
+/* Chevron */
+.call-log-chevron {
+  color: var(--text-dim);
+  transition: transform 220ms ease;
+  flex-shrink: 0;
+  margin-left: -2px;
+}
+.call-log-item.open .call-log-chevron { transform: rotate(90deg); }
+
+/* Expanded transcript panel */
+.call-log-body {
+  display: none;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.85rem;
+  border-top: 1px solid var(--border);
+  background: rgba(0,0,0,0.12);
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+.call-log-item.open .call-log-body { display: flex; }
+
+/* Chat bubbles */
+.call-turn {
+  display: flex;
+  gap: 0.45rem;
+  max-width: 88%;
+}
+.call-turn.assistant { align-self: flex-start; }
+.call-turn.user      { align-self: flex-end; flex-direction: row-reverse; }
 
 .call-turn-bubble {
-  padding: 0.45rem 0.75rem;
-  border-radius: 12px;
+  padding: 0.5rem 0.8rem;
+  border-radius: 14px;
   font-size: 0.82rem;
   line-height: 1.5;
-  max-width: calc(100% - 36px);
   word-break: break-word;
 }
 .call-turn.assistant .call-turn-bubble {
-  background: rgba(79,142,247,0.07);
-  border: 1px solid rgba(79,142,247,0.13);
+  background: rgba(79,142,247,0.1);
+  border: 1px solid rgba(79,142,247,0.18);
   color: var(--text);
   border-top-left-radius: 3px;
 }
 .call-turn.user .call-turn-bubble {
-  background: rgba(52,211,153,0.07);
-  border: 1px solid rgba(52,211,153,0.13);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.09);
   color: var(--text);
   border-top-right-radius: 3px;
 }
+
 .call-no-transcript {
   font-size: 0.78rem;
   color: var(--text-dim);
   font-style: italic;
-  padding: 0.25rem 0;
+  text-align: center;
+  padding: 0.5rem 0;
 }
 
 .back-btn {
