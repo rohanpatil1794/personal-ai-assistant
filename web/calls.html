@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ronny — Call Transcripts</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css?v=2">
+  <style>
+    body { overflow: hidden; }
+
+    .calls-layout {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ── */
+    .calls-sidebar {
+      width: 280px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-header {
+      padding: 0.9rem 1rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+    .call-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.4rem;
+    }
+    .call-item {
+      padding: 0.65rem 0.75rem;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 150ms;
+      border: 1px solid transparent;
+      margin-bottom: 2px;
+    }
+    .call-item:hover { background: rgba(255,255,255,0.04); }
+    .call-item.active {
+      background: rgba(79,142,247,0.1);
+      border-color: rgba(79,142,247,0.25);
+    }
+    .call-item-contact {
+      font-size: 0.88rem;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-transform: capitalize;
+    }
+    .call-item-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+    .status-pill {
+      padding: 1px 6px;
+      border-radius: 99px;
+      font-size: 0.68rem;
+      font-weight: 500;
+    }
+    .status-pill.completed { background: rgba(52,211,153,0.15); color: var(--green); }
+    .status-pill.failed    { background: rgba(248,113,113,0.15); color: var(--red); }
+    .status-pill.no-answer { background: rgba(251,191,36,0.15);  color: var(--amber); }
+    .status-pill.dialing   { background: rgba(79,142,247,0.15);  color: var(--accent); }
+    .empty-state {
+      text-align: center;
+      padding: 2rem 1rem;
+      color: var(--text-dim);
+      font-size: 0.82rem;
+    }
+
+    /* ── Main panel ── */
+    .calls-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+    }
+    .call-detail-header {
+      padding: 0.85rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      flex-shrink: 0;
+    }
+    .call-detail-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      text-transform: capitalize;
+    }
+    .call-detail-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .call-mission {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-style: italic;
+      margin-top: 0.1rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── Transcript ── */
+    .transcript-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.25rem 1.25rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .turn {
+      display: flex;
+      gap: 0.65rem;
+      max-width: 640px;
+      animation: fade-in 200ms ease;
+    }
+    .turn.user { align-self: flex-end; flex-direction: row-reverse; }
+    .turn-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .turn.assistant .turn-avatar {
+      background: rgba(79,142,247,0.2);
+      color: var(--accent);
+    }
+    .turn.user .turn-avatar {
+      background: rgba(52,211,153,0.2);
+      color: var(--green);
+    }
+    .turn-bubble {
+      padding: 0.6rem 0.9rem;
+      border-radius: 14px;
+      font-size: 0.875rem;
+      line-height: 1.55;
+      max-width: 520px;
+    }
+    .turn.assistant .turn-bubble {
+      background: rgba(79,142,247,0.08);
+      border: 1px solid rgba(79,142,247,0.15);
+      color: var(--text);
+      border-top-left-radius: 4px;
+    }
+    .turn.user .turn-bubble {
+      background: rgba(52,211,153,0.08);
+      border: 1px solid rgba(52,211,153,0.15);
+      color: var(--text);
+      border-top-right-radius: 4px;
+    }
+    .no-transcript {
+      color: var(--text-dim);
+      font-size: 0.82rem;
+      font-style: italic;
+      padding: 1rem 0;
+    }
+
+    .placeholder-panel {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-dim);
+      font-size: 0.875rem;
+    }
+
+    @media (max-width: 640px) {
+      .calls-sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); max-height: 220px; }
+      .calls-layout  { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="/" class="back-btn" aria-label="Back to assistant">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+      Back
+    </a>
+    <div class="logo-row">
+      <span class="logo-name">Call Transcripts</span>
+    </div>
+    <div style="width:34px"></div>
+  </header>
+
+  <div class="calls-layout">
+
+    <!-- Sidebar -->
+    <aside class="calls-sidebar">
+      <div class="sidebar-header">All Calls</div>
+      <div id="call-list" class="call-list">
+        <p class="empty-state">Loading…</p>
+      </div>
+    </aside>
+
+    <!-- Main panel -->
+    <section class="calls-main" id="calls-main">
+      <div class="placeholder-panel" id="placeholder">
+        Select a call to view its transcript
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    function apiHeaders() {
+      const t = window.RONNY_API_TOKEN;
+      return t ? { Authorization: `Bearer ${t}` } : {};
+    }
+
+    let calls = [];
+    let activeId = null;
+
+    async function load() {
+      try {
+        const r = await fetch('/api/call-logs', { headers: apiHeaders() });
+        if (!r.ok) return;
+        const { calls: data } = await r.json();
+        calls = data;
+        renderSidebar();
+        if (calls.length > 0) selectCall(calls[0].call_id);
+      } catch {}
+    }
+
+    function renderSidebar() {
+      const list = document.getElementById('call-list');
+      if (calls.length === 0) {
+        list.innerHTML = '<p class="empty-state">No calls yet.</p>';
+        return;
+      }
+      list.innerHTML = '';
+      for (const c of calls) {
+        const item = document.createElement('div');
+        item.className = 'call-item' + (c.call_id === activeId ? ' active' : '');
+        item.dataset.id = c.call_id;
+        const ts = c.ts ? c.ts.replace('T',' ').slice(0,16) : '';
+        item.innerHTML = `
+          <div class="call-item-contact">${esc(c.contact || c.phone || 'Unknown')}</div>
+          <div class="call-item-meta">
+            <span class="status-pill ${c.status}">${c.status}</span>
+            <span>${ts}</span>
+          </div>`;
+        item.addEventListener('click', () => selectCall(c.call_id));
+        list.appendChild(item);
+      }
+    }
+
+    function selectCall(id) {
+      activeId = id;
+      renderSidebar();
+      const call = calls.find(c => c.call_id === id);
+      if (!call) return;
+      renderDetail(call);
+    }
+
+    function renderDetail(call) {
+      const main = document.getElementById('calls-main');
+      const turns = Array.isArray(call.transcript) ? call.transcript : [];
+
+      const turnsHtml = turns.length === 0
+        ? '<p class="no-transcript">No transcript captured for this call.</p>'
+        : turns.map(t => `
+          <div class="turn ${t.role}">
+            <div class="turn-avatar">${t.role === 'assistant' ? 'AI' : esc((call.contact || 'U')[0].toUpperCase())}</div>
+            <div class="turn-bubble">${esc(t.text)}</div>
+          </div>`).join('');
+
+      const phone = call.phone ? `· ${call.phone}` : '';
+      const completedAt = call.completed_at ? call.completed_at.replace('T',' ').slice(0,19) : '';
+      const duration = call.ts && call.completed_at
+        ? `· ${Math.round((new Date(call.completed_at) - new Date(call.ts)) / 1000)}s`
+        : '';
+
+      main.innerHTML = `
+        <div class="call-detail-header">
+          <div class="call-detail-title">${esc(call.contact || call.phone || 'Unknown')}</div>
+          <div class="call-detail-meta">
+            <span class="status-pill ${call.status}">${call.status}</span>
+            <span>${esc(call.ts ? call.ts.replace('T',' ').slice(0,19) : '')} ${completedAt ? '→ ' + completedAt : ''} ${duration}</span>
+            <span>${phone}</span>
+          </div>
+          ${call.mission ? `<div class="call-mission">${esc(call.mission)}</div>` : ''}
+        </div>
+        <div class="transcript-scroll">${turnsHtml}</div>`;
+    }
+
+    function esc(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    load();
+  </script>
+</body>
+</html>

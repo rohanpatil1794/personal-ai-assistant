@@ -19,3 +19,7 @@ fix_tunnel.ps1
 register_task.ps1
 ronny_task.xml
 contacts.json
+profile.json
+logs/
+start-ronny.ps1
+scripts/

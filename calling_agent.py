@@ -132,12 +132,20 @@ class _SarvamTTSStream(tts.ChunkedStream):
 # Result reporting
 # ---------------------------------------------------------------------------
 
-async def post_result(callback_url: str, call_id: str, status: str, response: str | None, summary: str | None) -> None:
+async def post_result(
+    callback_url: str,
+    call_id: str,
+    status: str,
+    response: str | None,
+    summary: str | None,
+    transcript: list | None = None,
+) -> None:
     payload = {
         "call_id": call_id,
         "status": status,
         "response": response,
         "summary": summary,
+        "transcript": transcript or [],
     }
     try:
         async with httpx.AsyncClient(timeout=10) as client:
@@ -233,19 +241,20 @@ async def entrypoint(ctx: JobContext) -> None:
         Agent(
             instructions=system_prompt,
             tools=[end_call],
-            # End turn quickly if there's silence — helps detect when to hang up
             max_endpointing_delay=3.0,
         ),
         room=ctx.room,
         room_input_options=RoomInputOptions(participant_identity=sip_participant.identity),
     )
 
-    # Open with introduction + message
+    # Speak the greeting immediately via say() — skips the LLM so audio starts ~2s faster.
+    # While it plays, the LLM can prepare the actual message in parallel.
+    greeting = f"Hi, I'm Ronny, {contact_name}'s personal AI assistant."
+    await session.say(greeting)
+
+    # Now generate and deliver the actual message via LLM
     await session.generate_reply(
-        instructions=(
-            f"Introduce yourself: 'Hi, I'm Ronny, the user's personal AI assistant.' "
-            f"Then immediately deliver this message in third person: {message}"
-        )
+        instructions=f"Deliver this message clearly in third person: {message}. After delivering it, listen for their response."
     )
 
     # Wait until: agent calls end_call, participant hangs up, or 5-min max
@@ -274,23 +283,31 @@ async def entrypoint(ctx: JobContext) -> None:
         except Exception as e:
             log.warning("calling_agent: hangup failed: %s", e)
 
-    # Gather transcript — build a full summary for Ronny to report
+    # Gather full transcript and last user response
+    transcript: list[dict] = []
+    response = None
+    summary = f"Call with {contact_name} completed."
     try:
-        chat_messages = session.chat_ctx.messages
-        user_msgs = [
-            str(m.content) for m in chat_messages
-            if hasattr(m, "role") and str(m.role) == "user" and m.content
-        ]
+        chat_messages = session.history.messages
+        for m in chat_messages:
+            role = str(getattr(m, "role", "")).lower()
+            content = str(m.content).strip() if m.content else ""
+            if role in ("assistant", "user") and content:
+                transcript.append({"role": role, "text": content})
+
+        user_msgs = [t["text"] for t in transcript if t["role"] == "user"]
         response = user_msgs[-1] if user_msgs else None
         summary = f"{contact_name} said: {response}" if response else f"Call with {contact_name} completed, no response captured."
     except Exception as e:
         log.warning("calling_agent: could not read transcript: %s", e)
-        response = None
-        summary = f"Call with {contact_name} completed."
 
-    log.info("calling_agent: call completed call_id=%s response=%s", call_id, response)
-    await post_result(callback_url, call_id, "completed", response, summary)
+    log.info("calling_agent: call completed call_id=%s turns=%d", call_id, len(transcript))
+    await post_result(callback_url, call_id, "completed", response, summary, transcript)
 
 
 if __name__ == "__main__":
-    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint, agent_name="calling-agent"))
+    cli.run_app(WorkerOptions(
+        entrypoint_fnc=entrypoint,
+        agent_name="calling-agent",
+        num_idle_processes=1,  # keep one warm process ready — eliminates cold-start delay
+    ))

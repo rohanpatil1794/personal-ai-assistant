@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ronny — Profile</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css?v=2">
+</head>
+<body>
+
+  <header>
+    <a href="/" class="back-btn" aria-label="Back to assistant">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+      Back
+    </a>
+    <div class="logo-row">
+      <span class="logo-name">Profile</span>
+    </div>
+    <div style="width:34px"></div>
+  </header>
+
+  <main class="profile-main">
+
+    <!-- Personal Info -->
+    <section class="profile-section">
+      <p class="profile-section-title">Personal Info</p>
+
+      <div class="profile-field">
+        <label for="profile-name">Name</label>
+        <input id="profile-name" class="profile-input" type="text" placeholder="Your name" autocomplete="off">
+      </div>
+
+      <div class="profile-field">
+        <label for="profile-about">About</label>
+        <textarea id="profile-about" class="profile-textarea" placeholder="A little about you — your job, city, interests, or anything Ronny should know…"></textarea>
+      </div>
+
+      <button id="profile-save-btn" class="profile-save-btn">Save</button>
+    </section>
+
+    <!-- Contacts -->
+    <section class="profile-section">
+      <p class="profile-section-title">Contacts</p>
+
+      <div id="contact-list" class="contact-list">
+        <p class="contact-empty">Loading…</p>
+      </div>
+
+      <div class="add-contact-form">
+        <input id="contact-name-input" class="profile-input" type="text" placeholder="Name" autocomplete="off">
+        <input id="contact-phone-input" class="profile-input" type="tel" placeholder="Phone number" autocomplete="off">
+        <button id="contact-add-btn" class="contact-add-btn" aria-label="Add contact">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="/static/profile.js?v=1"></script>
+</body>
+</html>

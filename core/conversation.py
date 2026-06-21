@@ -10,6 +10,7 @@ from core.registry import IntegrationRegistry
 from services.llm import LLMClient
 from utils.exceptions import GeminiError as LLMError
 from utils.logger import get_logger
+import utils.profile as profile_store
 
 log = get_logger(__name__)
 
@@ -76,6 +77,15 @@ class ConversationManager:
 
         today = datetime.now().strftime("%A, %d %B %Y")
         system_prompt = SYSTEM_PROMPT_TEMPLATE.format(entity_list=entity_lines, today=today)
+
+        prof = profile_store.load()
+        if prof.get("name") or prof.get("about"):
+            system_prompt += "\n\n## User Profile"
+            if prof.get("name"):
+                system_prompt += f"\n- Name: {prof['name']}"
+            if prof.get("about"):
+                system_prompt += f"\n- About: {prof['about']}"
+
         self._llm.start_chat(system_prompt)
         self._started = True
         log.info("conversation: session started")
