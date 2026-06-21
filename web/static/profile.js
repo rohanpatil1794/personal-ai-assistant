@@ -129,7 +129,91 @@ function esc(s) {
 }
 
 // ============================================================
+// Call Logs
+// ============================================================
+
+const callLogList = document.getElementById('call-log-list');
+
+async function loadCallLogs() {
+  try {
+    const r = await fetch('/api/call-logs', { headers: apiHeaders() });
+    if (!r.ok) { callLogList.innerHTML = '<p class="contact-empty">Could not load call logs.</p>'; return; }
+    const { calls } = await r.json();
+    renderCallLogs(calls);
+  } catch {
+    callLogList.innerHTML = '<p class="contact-empty">Could not load call logs.</p>';
+  }
+}
+
+function renderCallLogs(calls) {
+  if (!calls || calls.length === 0) {
+    callLogList.innerHTML = '<p class="contact-empty">No calls placed yet.</p>';
+    return;
+  }
+  callLogList.innerHTML = '';
+  for (const call of calls) {
+    const item = document.createElement('div');
+    item.className = 'call-log-item';
+
+    const ts = call.ts ? call.ts.replace('T', ' ').slice(0, 16) : '';
+    const contact = call.contact || call.phone || 'Unknown';
+    const status = call.status || 'unknown';
+    const turns = Array.isArray(call.transcript) ? call.transcript : [];
+    const contactInitial = contact[0].toUpperCase();
+
+    // Header (always visible, click to expand)
+    const header = document.createElement('div');
+    header.className = 'call-log-header';
+    header.innerHTML = `
+      <span class="call-log-contact">${esc(contact)}</span>
+      <span class="call-log-meta">
+        <span class="call-log-pill ${esc(status)}">${esc(status)}</span>
+        <span class="call-log-ts">${esc(ts)}</span>
+      </span>
+      <svg class="call-log-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>`;
+
+    // Body (transcript, hidden by default)
+    const body = document.createElement('div');
+    body.className = 'call-log-body';
+
+    if (call.mission) {
+      const m = document.createElement('p');
+      m.className = 'call-log-mission';
+      m.textContent = call.mission;
+      body.appendChild(m);
+    }
+
+    if (turns.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'call-no-transcript';
+      empty.textContent = 'No transcript captured for this call.';
+      body.appendChild(empty);
+    } else {
+      for (const turn of turns) {
+        const div = document.createElement('div');
+        div.className = `call-turn ${esc(turn.role)}`;
+        div.innerHTML = `
+          <div class="call-turn-avatar">${turn.role === 'assistant' ? 'AI' : esc(contactInitial)}</div>
+          <div class="call-turn-bubble">${esc(turn.text)}</div>`;
+        body.appendChild(div);
+      }
+    }
+
+    header.addEventListener('click', () => {
+      item.classList.toggle('open');
+    });
+
+    item.appendChild(header);
+    item.appendChild(body);
+    callLogList.appendChild(item);
+  }
+}
+
+// ============================================================
 // Init
 // ============================================================
 loadProfile();
 loadContacts();
+loadCallLogs();
