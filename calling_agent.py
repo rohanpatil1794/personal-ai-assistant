@@ -191,8 +191,17 @@ async def entrypoint(ctx: JobContext) -> None:
     log.info("calling_agent: job started call_id=%s number=%s user_name=%s", call_id, phone_number, user_name)
 
     from datetime import datetime, timedelta, timezone
+    import re as _re
     IST = timezone(timedelta(hours=5, minutes=30))
     today_ist = datetime.now(IST).strftime("%Y-%m-%d")
+
+    # Pre-convert first-person references in the message
+    delivered_message = _re.sub(r"\bI'm\b", f"{user_name} is", message)
+    delivered_message = _re.sub(r"\bI've\b", f"{user_name} has", delivered_message)
+    delivered_message = _re.sub(r"\bI'll\b", f"{user_name} will", delivered_message)
+    delivered_message = _re.sub(r"\bI\b", user_name, delivered_message)
+    delivered_message = _re.sub(r"\bmy\b", f"{user_name}'s", delivered_message, flags=_re.IGNORECASE)
+    delivered_message = _re.sub(r"\bme\b", user_name, delivered_message, flags=_re.IGNORECASE)
 
     system_prompt = (
         f"You are Ronny, {user_name}'s personal AI assistant, making a phone call on their behalf. "
@@ -203,8 +212,8 @@ async def entrypoint(ctx: JobContext) -> None:
         f"For example, if the message is 'I will be late', say '{user_name} will be late'. "
         f"Today's date is {today_ist} (IST).\n"
         f"Your goal:\n"
-        f"1. You have already introduced yourself. Now deliver this message, converting any first-person "
-        f"   references ('I', 'my', 'me') to '{user_name}': {message}\n"
+        f"1. The greeting and the following message have ALREADY been spoken — do NOT repeat them.\n"
+        f"   Message already delivered: {delivered_message}\n"
         f"2. Listen for their response and note: {extract_intent}.\n"
         f"3. Act autonomously on small follow-up tasks without asking {user_name} for permission:\n"
         f"   - If rescheduling comes up: call check_calendar to find a free slot on a nearby date, "
@@ -309,15 +318,8 @@ async def entrypoint(ctx: JobContext) -> None:
     # Speak the greeting immediately via say() — skips the LLM so audio starts ~2s faster.
     greeting = f"Hi, I'm Ronny, {user_name}'s personal AI assistant."
     await session.say(greeting)
-
-    # Deliver the actual message — LLM must convert any first-person to user_name
-    await session.generate_reply(
-        instructions=(
-            f"Deliver the following message to the person on the call. "
-            f"Convert any first-person references ('I', 'my', 'me') to '{user_name}'. "
-            f"Speak naturally in 1-2 sentences: {message}"
-        )
-    )
+    # Use say() for the message too — avoids duplicate delivery caused by LLM context race
+    await session.say(delivered_message)
 
     # Wait until: agent calls end_call, participant hangs up, or 5-min max
     try:
