@@ -220,7 +220,8 @@ async def entrypoint(ctx: JobContext) -> None:
         f"     propose that specific time to the other person, and if they confirm, call create_calendar_event "
         f"     to book it immediately. Do not ask {user_name} — just do it.\n"
         f"   - Use your best judgement for similar small logistics.\n"
-        f"4. Once the conversation is complete, say a brief goodbye and call end_call immediately.\n"
+        f"4. Once the conversation is complete, say a warm, complete farewell (e.g. 'That's all, have a great day! Goodbye!'). "
+        f"   Wait until you have fully said goodbye, THEN call end_call.\n"
         f"Do not narrate, do not script the other person's side, do not add stage directions."
     )
 
@@ -343,7 +344,7 @@ async def entrypoint(ctx: JobContext) -> None:
                     identity=sip_participant.identity,
                 ))
             log.info("calling_agent: hung up call_id=%s", call_id)
-            await asyncio.sleep(1)  # let disconnect propagate
+            await asyncio.sleep(4)  # let TTS finish playing before disconnect propagates
         except Exception as e:
             log.warning("calling_agent: hangup failed: %s", e)
 
