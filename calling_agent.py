@@ -190,6 +190,10 @@ async def entrypoint(ctx: JobContext) -> None:
 
     log.info("calling_agent: job started call_id=%s number=%s user_name=%s", call_id, phone_number, user_name)
 
+    from datetime import datetime, timedelta, timezone
+    IST = timezone(timedelta(hours=5, minutes=30))
+    today_ist = datetime.now(IST).strftime("%Y-%m-%d")
+
     system_prompt = (
         f"You are Ronny, {user_name}'s personal AI assistant, making a phone call on their behalf. "
         f"Speak ONLY as yourself — never write the other person's lines or stage directions. "
@@ -197,24 +201,72 @@ async def entrypoint(ctx: JobContext) -> None:
         f"IMPORTANT: You are NOT {user_name}. You are Ronny, calling on their behalf. "
         f"Always refer to {user_name} in third person — never say 'I' when meaning {user_name}. "
         f"For example, if the message is 'I will be late', say '{user_name} will be late'. "
+        f"Today's date is {today_ist} (IST).\n"
         f"Your goal:\n"
         f"1. You have already introduced yourself. Now deliver this message, converting any first-person "
         f"   references ('I', 'my', 'me') to '{user_name}': {message}\n"
         f"2. Listen for their response and note: {extract_intent}.\n"
-        f"3. Once the message is delivered and acknowledged, say a brief goodbye and call end_call immediately.\n"
+        f"3. Act autonomously on small follow-up tasks without asking {user_name} for permission:\n"
+        f"   - If rescheduling comes up: call check_calendar to find a free slot on a nearby date, "
+        f"     propose that specific time to the other person, and if they confirm, call create_calendar_event "
+        f"     to book it immediately. Do not ask {user_name} — just do it.\n"
+        f"   - Use your best judgement for similar small logistics.\n"
+        f"4. Once the conversation is complete, say a brief goodbye and call end_call immediately.\n"
         f"Do not narrate, do not script the other person's side, do not add stage directions."
     )
 
     # Signals
     call_ended = asyncio.Event()
     participant_left = asyncio.Event()
+    calendar_actions: list[dict] = []  # track any calendar events created
 
-    # Tool the LLM calls to hang up
+    # ── Tool: end call ──
     @agents.function_tool
     async def end_call() -> str:
-        """End the phone call. Call this as soon as the message has been delivered and acknowledged, or after saying goodbye."""
+        """End the phone call. Call this once the conversation is complete and you have said goodbye."""
         call_ended.set()
         return "Call ended."
+
+    # ── Tool: check calendar availability ──
+    @agents.function_tool
+    async def check_calendar(date: str) -> str:
+        """Check Rohan's calendar availability for a given date (YYYY-MM-DD format).
+        Returns busy periods and whether the day is free. Use this before proposing a reschedule time."""
+        try:
+            from integrations.google_calendar_client import GoogleCalendarClient
+            gcal = await asyncio.get_event_loop().run_in_executor(None, GoogleCalendarClient)
+            if not gcal.available:
+                return "Calendar not available."
+            result = await asyncio.get_event_loop().run_in_executor(None, gcal.check_availability, date)
+            if result.get("is_free_all_day"):
+                return f"{date} is completely free."
+            busy = result.get("busy_periods", [])
+            busy_str = ", ".join(f"{b['start'][11:16]}–{b['end'][11:16]}" for b in busy)
+            return f"{date} busy periods (IST): {busy_str}. Rest of the day is free."
+        except Exception as e:
+            return f"Could not check calendar: {e}"
+
+    # ── Tool: create calendar event ──
+    @agents.function_tool
+    async def create_calendar_event(summary: str, start_datetime: str, end_datetime: str, description: str = "") -> str:
+        """Create a calendar event for Rohan. Use ISO 8601 datetime strings in IST (e.g. 2026-06-23T15:00:00+05:30).
+        Call this only after the other person has confirmed the rescheduled time."""
+        try:
+            from integrations.google_calendar_client import GoogleCalendarClient
+            gcal = await asyncio.get_event_loop().run_in_executor(None, GoogleCalendarClient)
+            if not gcal.available:
+                return "Calendar not available — could not create event."
+            event = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: gcal.create_event(summary=summary, start_datetime=start_datetime,
+                                                  end_datetime=end_datetime, description=description)
+            )
+            calendar_actions.append({"action": "created", "summary": summary,
+                                      "start": start_datetime, "end": end_datetime})
+            log.info("calling_agent: calendar event created call_id=%s summary=%s", call_id, summary)
+            return f"Event '{summary}' created on {start_datetime[:10]} from {start_datetime[11:16]} to {end_datetime[11:16]} IST."
+        except Exception as e:
+            log.warning("calling_agent: failed to create event call_id=%s error=%s", call_id, e)
+            return f"Failed to create event: {e}"
 
     stt_plugin = SarvamSTT()
     tts_plugin = SarvamTTS()
@@ -247,7 +299,7 @@ async def entrypoint(ctx: JobContext) -> None:
     await session.start(
         Agent(
             instructions=system_prompt,
-            tools=[end_call],
+            tools=[end_call, check_calendar, create_calendar_event],
             max_endpointing_delay=3.0,
         ),
         room=ctx.room,
@@ -308,6 +360,9 @@ async def entrypoint(ctx: JobContext) -> None:
         user_msgs = [t["text"] for t in transcript if t["role"] == "user"]
         response = user_msgs[-1] if user_msgs else None
         summary = f"{contact_name} said: {response}" if response else f"Call with {contact_name} completed, no response captured."
+        if calendar_actions:
+            actions_str = "; ".join(f"Created '{a['summary']}' on {a['start'][:10]}" for a in calendar_actions)
+            summary += f" Calendar actions: {actions_str}."
     except Exception as e:
         log.warning("calling_agent: could not read transcript: %s", e)
 
