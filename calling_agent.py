@@ -202,7 +202,6 @@ async def entrypoint(ctx: JobContext) -> None:
         f"   references ('I', 'my', 'me') to '{user_name}': {message}\n"
         f"2. Listen for their response and note: {extract_intent}.\n"
         f"3. Once the message is delivered and acknowledged, say a brief goodbye and call end_call immediately.\n"
-        f"4. If they do not respond within a few seconds after you speak, call end_call.\n"
         f"Do not narrate, do not script the other person's side, do not add stage directions."
     )
 
