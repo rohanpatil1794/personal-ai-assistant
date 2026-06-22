@@ -357,8 +357,16 @@ async def entrypoint(ctx: JobContext) -> None:
         for m in chat_messages:
             role = str(getattr(m, "role", "")).lower()
             raw = m.content
-            if isinstance(raw, list):
-                content = " ".join(str(c) for c in raw if c).strip()
+            if isinstance(raw, str):
+                content = raw.strip()
+            elif isinstance(raw, list):
+                parts = []
+                for c in raw:
+                    if hasattr(c, "text"):
+                        parts.append(c.text)
+                    else:
+                        parts.append(str(c))
+                content = " ".join(p for p in parts if p).strip()
             else:
                 content = str(raw).strip() if raw else ""
             if role in ("assistant", "user") and content:
