@@ -219,7 +219,7 @@ async def entrypoint(ctx: JobContext) -> None:
 
     stt_plugin = SarvamSTT()
     tts_plugin = SarvamTTS()
-    llm_plugin = lk_groq.LLM(model="llama-3.1-8b-instant", api_key=GROQ_API_KEY)
+    llm_plugin = lk_groq.LLM(model="llama-3.3-70b-versatile", api_key=GROQ_API_KEY)
     vad_plugin = silero.VAD.load()
 
     # Wait for the SIP participant to join
@@ -299,7 +299,7 @@ async def entrypoint(ctx: JobContext) -> None:
     response = None
     summary = f"Call with {contact_name} completed."
     try:
-        chat_messages = session.history.messages
+        chat_messages = session.history.messages()
         for m in chat_messages:
             role = str(getattr(m, "role", "")).lower()
             content = str(m.content).strip() if m.content else ""
