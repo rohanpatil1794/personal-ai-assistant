@@ -353,7 +353,11 @@ async def entrypoint(ctx: JobContext) -> None:
         chat_messages = session.history.messages()
         for m in chat_messages:
             role = str(getattr(m, "role", "")).lower()
-            content = str(m.content).strip() if m.content else ""
+            raw = m.content
+            if isinstance(raw, list):
+                content = " ".join(str(c) for c in raw if c).strip()
+            else:
+                content = str(raw).strip() if raw else ""
             if role in ("assistant", "user") and content:
                 transcript.append({"role": role, "text": content})
 
