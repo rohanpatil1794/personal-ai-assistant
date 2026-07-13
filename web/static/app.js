@@ -494,3 +494,66 @@ textInput.addEventListener('keydown', e => {
 });
 
 document.addEventListener('pointerdown', () => getAudioCtx().resume(), { once: true });
+
+// ============================================================
+// Model switcher
+// ============================================================
+
+const modelSwitcher = document.getElementById('model-switcher');
+const modelBtns = modelSwitcher ? [...modelSwitcher.querySelectorAll('.model-btn')] : [];
+
+function setActiveProvider(provider) {
+  modelBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.provider === provider));
+}
+
+async function loadProvider() {
+  try {
+    const r = await fetch('/api/llm-provider', { headers: apiHeaders() });
+    if (!r.ok) return;
+    const { provider } = await r.json();
+    setActiveProvider(provider);
+  } catch { /* non-fatal */ }
+}
+
+modelBtns.forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const provider = btn.dataset.provider;
+    if (btn.classList.contains('active') || modelSwitcher.classList.contains('switching')) return;
+
+    modelSwitcher.classList.add('switching');
+    btn.classList.add('pending');
+    const prev = modelBtns.find(b => b.classList.contains('active'))?.dataset.provider;
+
+    try {
+      const r = await fetch('/api/llm-provider', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...apiHeaders() },
+        body: JSON.stringify({ provider }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        // Flash red briefly then restore
+        btn.style.color = 'var(--red)';
+        btn.textContent = data.detail?.slice(0, 28) || 'No API key';
+        setTimeout(() => {
+          btn.style.color = '';
+          btn.textContent = providerLabel(provider);
+          if (prev) setActiveProvider(prev);
+        }, 2500);
+      } else {
+        setActiveProvider(provider);
+      }
+    } catch {
+      if (prev) setActiveProvider(prev);
+    } finally {
+      modelSwitcher.classList.remove('switching');
+      btn.classList.remove('pending');
+    }
+  });
+});
+
+function providerLabel(p) {
+  return { groq: 'Groq', anthropic: 'Claude', openai: 'OpenAI' }[p] || p;
+}
+
+loadProvider();

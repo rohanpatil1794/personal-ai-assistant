@@ -3,6 +3,7 @@ FastAPI web server for the Ronny personal AI assistant.
 Replaces the desktop CustomTkinter UI with a browser-based interface.
 """
 import base64
+import json
 import time
 from contextlib import asynccontextmanager
 
@@ -47,6 +48,29 @@ _conv: ConversationManager | None = None
 _tts_speaker: str = "rahul"
 _call_store: CallStore | None = None
 _contacts: ContactBook | None = None
+_registry: IntegrationRegistry | None = None
+_ha_integration = None
+_current_provider: str = "anthropic"
+_api_keys: dict = {}
+
+_PROVIDER_FILE = Path("llm_provider.json")
+_VALID_PROVIDERS = ("groq", "anthropic", "openai")
+
+
+def _load_provider() -> str:
+    try:
+        if _PROVIDER_FILE.exists():
+            return json.loads(_PROVIDER_FILE.read_text()).get("provider", "anthropic")
+    except Exception:
+        pass
+    return "anthropic"
+
+
+def _save_provider(provider: str) -> None:
+    try:
+        _PROVIDER_FILE.write_text(json.dumps({"provider": provider}))
+    except Exception:
+        pass
 
 # Rate limiter — 10 requests per minute per IP on voice/text endpoints
 limiter = Limiter(key_func=get_remote_address)
@@ -66,6 +90,7 @@ async def verify_token(credentials: HTTPAuthorizationCredentials | None = Depend
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _settings, _conv, _tts_speaker, _call_store, _contacts
+    global _registry, _ha_integration, _current_provider, _api_keys
     _settings = load_settings()
     _tts_speaker = await run_in_threadpool(
         tts_service.validate_speaker, _settings.SARVAM_API_KEY, _settings.TTS_SPEAKER, _settings.TTS_LANGUAGE
@@ -93,23 +118,31 @@ async def lifespan(app: FastAPI):
             log.warning("server: LiveKit client init failed, calling disabled", error=str(e))
 
     # Register integrations — add or remove features here, nothing else changes
-    registry = IntegrationRegistry()
-    registry.register(HAIntegration(ha_client))
-    registry.register(SwiggyIntegration(swiggy_client))
-    registry.register(GoogleCalendarIntegration(gcal_client))
-    registry.register(CallingIntegration(
+    _registry = IntegrationRegistry()
+    _registry.register(HAIntegration(ha_client))
+    _registry.register(SwiggyIntegration(swiggy_client))
+    _registry.register(GoogleCalendarIntegration(gcal_client))
+    _registry.register(CallingIntegration(
         livekit_client, contacts, _call_store,
         callback_base_url=_settings.CALLING_AGENT_CALLBACK_BASE,
     ))
+    _ha_integration = _registry.get_integration("ha")
 
-    llm = LLMClient(_settings.GROQ_API_KEY, tools=registry.get_all_tools())
-    ha_integration = registry.get_integration("ha")
-    _conv = ConversationManager(llm, ha_integration, registry)
+    # Load persisted provider choice and API keys
+    _current_provider = _load_provider()
+    _api_keys = {
+        "groq": _settings.GROQ_API_KEY,
+        "anthropic": _settings.ANTHROPIC_API_KEY,
+        "openai": _settings.OPENAI_API_KEY,
+    }
+
+    llm = LLMClient(_current_provider, _api_keys, tools=_registry.get_all_tools())
+    _conv = ConversationManager(llm, _ha_integration, _registry)
     await run_in_threadpool(_conv.start)
 
     if not _settings.API_TOKEN:
         log.warning("server: API_TOKEN is not set — all /api/* endpoints are unprotected. Set API_TOKEN in .env for production.")
-    log.info("server: Ronny is ready")
+    log.info("server: Ronny is ready", provider=_current_provider)
     yield
 
 
@@ -186,6 +219,54 @@ async def _llm_and_tts(
 @app.get("/api/status")
 async def status():
     return {"status": "ok", "ready": _conv is not None}
+
+
+# ---------------------------------------------------------------------------
+# LLM provider switcher
+# ---------------------------------------------------------------------------
+
+class ProviderRequest(BaseModel):
+    provider: str
+
+
+@app.get("/api/llm-provider")
+async def get_llm_provider(_: None = Depends(verify_token)):
+    """Return the active provider and which ones have API keys configured."""
+    available = [
+        p for p in _VALID_PROVIDERS
+        if _api_keys.get(p)
+    ]
+    return {"provider": _current_provider, "providers": list(_VALID_PROVIDERS), "available": available}
+
+
+@app.post("/api/llm-provider")
+async def set_llm_provider(req: ProviderRequest, _: None = Depends(verify_token)):
+    """Switch the active LLM provider and reinitialise the conversation."""
+    global _conv, _current_provider
+
+    provider = req.provider
+    if provider not in _VALID_PROVIDERS:
+        raise HTTPException(status_code=400, detail=f"Invalid provider. Choose from: {list(_VALID_PROVIDERS)}")
+
+    if not _api_keys.get(provider):
+        raise HTTPException(
+            status_code=400,
+            detail=f"No API key configured for '{provider}'. Add {provider.upper()}_API_KEY to your .env file.",
+        )
+
+    try:
+        llm = LLMClient(provider, _api_keys, tools=_registry.get_all_tools())
+        new_conv = ConversationManager(llm, _ha_integration, _registry)
+        await run_in_threadpool(new_conv.start)
+        _conv = new_conv
+        _current_provider = provider
+        _save_provider(provider)
+        log.info("server: switched provider", provider=provider)
+    except Exception as e:
+        log.error("server: provider switch failed", provider=provider, error=str(e))
+        raise HTTPException(status_code=502, detail=f"Failed to initialise '{provider}': {e}")
+
+    return {"ok": True, "provider": provider}
 
 
 @app.post("/api/voice", response_model=AssistantResponse)

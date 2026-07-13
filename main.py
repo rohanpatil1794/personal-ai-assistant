@@ -54,7 +54,14 @@ def _launch_app() -> None:
     from ui.main_window import MainWindow
 
     ha = HAClient(settings.HA_URL, settings.HA_TOKEN)
-    llm = LLMClient(settings.GROQ_API_KEY)
+    llm = LLMClient(
+        provider="anthropic",
+        api_keys={
+            "groq": settings.GROQ_API_KEY,
+            "anthropic": settings.ANTHROPIC_API_KEY,
+            "openai": settings.OPENAI_API_KEY,
+        },
+    )
     conv = ConversationManager(llm, ha)
 
     window = MainWindow(

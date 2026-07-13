@@ -3,12 +3,16 @@ from pydantic import ValidationError
 
 
 class Settings(BaseSettings):
-    GROQ_API_KEY: str
+    GROQ_API_KEY: str = ""
     SARVAM_API_KEY: str
     HA_URL: str
     HA_TOKEN: str
     SWIGGY_ACCESS_TOKEN: str = ""
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    ANTHROPIC_API_KEY: str = ""
+    ANTHROPIC_MODEL: str = "claude-haiku-4-5"
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o-mini"
     GOOGLE_CALENDAR_TOKEN: str = "token.json"
     GOOGLE_CALENDAR_CREDENTIALS: str = "credentials.json"
     TTS_SPEAKER: str = "rahul"
@@ -54,5 +58,5 @@ def missing_fields() -> list[str]:
     from dotenv import dotenv_values
 
     values = dotenv_values(".env")
-    required = ["GROQ_API_KEY", "SARVAM_API_KEY", "HA_URL", "HA_TOKEN"]
+    required = ["SARVAM_API_KEY", "HA_URL", "HA_TOKEN"]
     return [f for f in required if not values.get(f) and not os.environ.get(f)]

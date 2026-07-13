@@ -549,10 +549,76 @@ button:focus-visible, input:focus-visible {
 }
 
 /* ============================================================
-   Profile button (header)
+   Header right group + profile button
    ============================================================ */
 header {
   justify-content: space-between;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   Model switcher — pill group in header
+   ============================================================ */
+.model-switcher {
+  display: flex;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px;
+  gap: 1px;
+}
+
+.model-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: background 160ms, color 160ms, opacity 160ms;
+  min-height: 26px;
+  user-select: none;
+}
+
+.model-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.07);
+  color: var(--text);
+}
+
+/* Provider-specific active colours */
+.model-btn[data-provider="groq"].active {
+  background: rgba(251,146,60,0.18);
+  color: #fb923c;
+}
+.model-btn[data-provider="anthropic"].active {
+  background: rgba(167,139,250,0.18);
+  color: #a78bfa;
+}
+.model-btn[data-provider="openai"].active {
+  background: rgba(52,211,153,0.15);
+  color: var(--green);
+}
+
+/* Switching / loading state */
+.model-switcher.switching .model-btn {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.model-switcher.switching .model-btn.pending {
+  opacity: 1;
+  pointer-events: none;
 }
 
 .profile-btn {
