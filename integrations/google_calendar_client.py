@@ -26,8 +26,11 @@ class GoogleCalendarClient:
         self._calendar_ids: list[str] | None = None  # cached list of all calendar IDs
 
         if os.path.exists(token_path):
-            self._service = self._build_service()
-            log.info("google_calendar: client initialised")
+            try:
+                self._service = self._build_service()
+                log.info("google_calendar: client initialised")
+            except Exception as e:
+                log.warning("google_calendar: failed to initialise — calendar disabled. Re-run integrations/google_auth.py to reauthorize. Error: %s", e)
         else:
             log.warning("google_calendar: token.json not found — calendar disabled. Run integrations/google_auth.py to authorize.")
 
