@@ -333,6 +333,7 @@ async def entrypoint(ctx: JobContext) -> None:
     # If agent ended it, remove the SIP participant (hang up our side)
     if call_ended.is_set() and not participant_left.is_set():
         try:
+            await asyncio.sleep(6)  # wait for goodbye TTS to finish playing before cutting the line
             from livekit.api import LiveKitAPI, RoomParticipantIdentity
             async with LiveKitAPI(
                 os.getenv("LIVEKIT_URL"),
@@ -344,7 +345,7 @@ async def entrypoint(ctx: JobContext) -> None:
                     identity=sip_participant.identity,
                 ))
             log.info("calling_agent: hung up call_id=%s", call_id)
-            await asyncio.sleep(4)  # let TTS finish playing before disconnect propagates
+            await asyncio.sleep(1)  # let disconnect propagate
         except Exception as e:
             log.warning("calling_agent: hangup failed: %s", e)
 
