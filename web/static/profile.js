@@ -1,4 +1,29 @@
-/* Ronny — Profile page */
+/* Ronny — Settings page */
+
+// ============================================================
+// Tab switching
+// ============================================================
+
+const configTabs  = [...document.querySelectorAll('.config-tab')];
+const configPanes = [...document.querySelectorAll('.config-pane')];
+
+function switchTab(name) {
+  configTabs.forEach(t => {
+    const on = t.dataset.tab === name;
+    t.classList.toggle('active', on);
+    t.setAttribute('aria-selected', String(on));
+  });
+  configPanes.forEach(p => p.classList.toggle('active', p.id === `pane-${name}`));
+  history.replaceState(null, '', '#' + name);
+}
+
+configTabs.forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+
+// Init from URL hash
+const _initTab = location.hash.slice(1);
+if (['profile', 'documents', 'calling'].includes(_initTab)) switchTab(_initTab);
+
+// ============================================================
 
 function apiHeaders(extra) {
   const token = window.RONNY_API_TOKEN;

@@ -3,14 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ronny — Profile</title>
+  <title>Ronny — Settings</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=3">
-  <style>
-    html, body { height: auto; overflow: visible; }
-    body { display: block; min-height: 100vh; }
-  </style>
+  <link rel="stylesheet" href="/static/style.css?v=4">
 </head>
 <body>
 
@@ -22,60 +18,85 @@
       Back
     </a>
     <div class="logo-row">
-      <span class="logo-name">Profile</span>
+      <span class="logo-name">Settings</span>
     </div>
-    <div style="width:34px"></div>
+    <div style="width:52px"></div>
   </header>
 
-  <main class="profile-main">
+  <nav class="config-tab-bar" role="tablist" aria-label="Settings sections">
+    <button class="config-tab active" data-tab="profile" role="tab" aria-selected="true">Profile</button>
+    <button class="config-tab" data-tab="documents" role="tab" aria-selected="false">Documents</button>
+    <button class="config-tab" data-tab="calling" role="tab" aria-selected="false">Outbound Calling</button>
+  </nav>
 
-    <!-- Personal Info -->
-    <section class="profile-section">
-      <p class="profile-section-title">Personal Info</p>
+  <div class="config-content">
 
-      <div class="profile-field">
-        <label for="profile-name">Name</label>
-        <input id="profile-name" class="profile-input" type="text" placeholder="Your name" autocomplete="off">
+    <!-- Profile pane -->
+    <div class="config-pane active" id="pane-profile">
+      <section class="profile-section">
+        <p class="profile-section-title">Personal Info</p>
+
+        <div class="profile-field">
+          <label for="profile-name">Name</label>
+          <input id="profile-name" class="profile-input" type="text" placeholder="Your name" autocomplete="off">
+        </div>
+
+        <div class="profile-field">
+          <label for="profile-about">About</label>
+          <textarea id="profile-about" class="profile-textarea" placeholder="A little about you — your job, city, interests, or anything Ronny should know…"></textarea>
+        </div>
+
+        <button id="profile-save-btn" class="profile-save-btn">Save</button>
+      </section>
+    </div>
+
+    <!-- Documents pane -->
+    <div class="config-pane" id="pane-documents">
+      <div class="config-empty-state">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="12" y1="18" x2="12" y2="12"/>
+          <line x1="9" y1="15" x2="15" y2="15"/>
+        </svg>
+        <p class="config-empty-title">Document Upload</p>
+        <p class="config-empty-desc">Upload documents for Ronny to reference during conversations. Coming soon.</p>
       </div>
+    </div>
 
-      <div class="profile-field">
-        <label for="profile-about">About</label>
-        <textarea id="profile-about" class="profile-textarea" placeholder="A little about you — your job, city, interests, or anything Ronny should know…"></textarea>
-      </div>
+    <!-- Outbound Calling pane -->
+    <div class="config-pane" id="pane-calling">
 
-      <button id="profile-save-btn" class="profile-save-btn">Save</button>
-    </section>
+      <section class="profile-section">
+        <p class="profile-section-title">Contacts</p>
 
-    <!-- Contacts -->
-    <section class="profile-section">
-      <p class="profile-section-title">Contacts</p>
+        <div id="contact-list" class="contact-list">
+          <p class="contact-empty">Loading…</p>
+        </div>
 
-      <div id="contact-list" class="contact-list">
-        <p class="contact-empty">Loading…</p>
-      </div>
+        <div class="add-contact-form">
+          <input id="contact-name-input" class="profile-input" type="text" placeholder="Name" autocomplete="off">
+          <input id="contact-phone-input" class="profile-input" type="tel" placeholder="Phone number" autocomplete="off">
+          <button id="contact-add-btn" class="contact-add-btn" aria-label="Add contact">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </button>
+        </div>
+      </section>
 
-      <div class="add-contact-form">
-        <input id="contact-name-input" class="profile-input" type="text" placeholder="Name" autocomplete="off">
-        <input id="contact-phone-input" class="profile-input" type="tel" placeholder="Phone number" autocomplete="off">
-        <button id="contact-add-btn" class="contact-add-btn" aria-label="Add contact">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <line x1="12" y1="5" x2="12" y2="19"/>
-            <line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-        </button>
-      </div>
-    </section>
+      <section class="profile-section">
+        <p class="profile-section-title">Call Logs</p>
+        <div id="call-log-list">
+          <p class="contact-empty">Loading…</p>
+        </div>
+      </section>
 
-    <!-- Call Logs -->
-    <section class="profile-section" id="call-logs-section">
-      <p class="profile-section-title">Call Logs</p>
-      <div id="call-log-list">
-        <p class="contact-empty">Loading…</p>
-      </div>
-    </section>
+    </div>
 
-  </main>
+  </div>
 
-  <script src="/static/profile.js?v=3"></script>
+  <script src="/static/profile.js?v=4"></script>
 </body>
 </html>
