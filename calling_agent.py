@@ -67,6 +67,16 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 _CALLING_PROVIDER_FILE = Path("calling_provider.json")
+_CALLING_VOICE_FILE   = Path("calling_voice.json")
+
+
+def _get_calling_voice() -> str:
+    try:
+        if _CALLING_VOICE_FILE.exists():
+            return json.loads(_CALLING_VOICE_FILE.read_text()).get("voice", "rahul")
+    except Exception:
+        pass
+    return "rahul"
 
 
 def _get_calling_llm():
@@ -325,7 +335,7 @@ async def entrypoint(ctx: JobContext) -> None:
             return f"Failed to create event: {e}"
 
     stt_plugin = SarvamSTT()
-    tts_plugin = SarvamTTS()
+    tts_plugin = SarvamTTS(speaker=_get_calling_voice())
     llm_plugin = _get_calling_llm()
     vad_plugin = silero.VAD.load()
 

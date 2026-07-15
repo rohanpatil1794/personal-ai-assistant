@@ -6,7 +6,7 @@
   <title>Ronny — Settings</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=5">
+  <link rel="stylesheet" href="/static/style.css?v=6">
 </head>
 <body>
 
@@ -78,6 +78,12 @@
       </section>
 
       <section class="profile-section">
+        <p class="profile-section-title">Voice</p>
+        <p class="calling-llm-hint">Sarvam voice used for outbound phone calls.</p>
+        <div id="calling-voice-grid" class="voice-grid" role="group" aria-label="Calling agent voice"></div>
+      </section>
+
+      <section class="profile-section">
         <p class="profile-section-title">Contacts</p>
 
         <div id="contact-list" class="contact-list">
@@ -107,6 +113,6 @@
 
   </div>
 
-  <script src="/static/profile.js?v=5"></script>
+  <script src="/static/profile.js?v=6"></script>
 </body>
 </html>

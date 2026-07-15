@@ -1056,6 +1056,46 @@ header {
   line-height: 1.5;
 }
 
+/* Voice grid */
+.voice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 0.45rem;
+}
+
+.voice-btn {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-muted);
+  font-family: inherit;
+  padding: 0.55rem 0.7rem;
+  cursor: pointer;
+  text-align: left;
+  transition: background 140ms, border-color 140ms, color 140ms;
+  user-select: none;
+}
+.voice-btn:hover {
+  background: rgba(255,255,255,0.07);
+  color: var(--text);
+}
+.voice-btn.active {
+  background: rgba(79,142,247,0.15);
+  border-color: rgba(79,142,247,0.4);
+  color: var(--accent);
+}
+.voice-btn-name {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.voice-btn-gender {
+  display: block;
+  font-size: 0.68rem;
+  margin-top: 1px;
+  opacity: 0.55;
+}
+
 .config-empty-state {
   display: flex;
   flex-direction: column;

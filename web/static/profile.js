@@ -329,9 +329,76 @@ function callingProviderLabel(p) {
 }
 
 // ============================================================
+// Calling agent voice
+// ============================================================
+
+const SARVAM_VOICES = [
+  { id: "meera",    label: "Meera",    gender: "Female" },
+  { id: "pavithra", label: "Pavithra", gender: "Female" },
+  { id: "maitreyi", label: "Maitreyi", gender: "Female" },
+  { id: "diya",     label: "Diya",     gender: "Female" },
+  { id: "anushka",  label: "Anushka",  gender: "Female" },
+  { id: "maya",     label: "Maya",     gender: "Female" },
+  { id: "misha",    label: "Misha",    gender: "Female" },
+  { id: "arvind",   label: "Arvind",   gender: "Male" },
+  { id: "amol",     label: "Amol",     gender: "Male" },
+  { id: "amartya",  label: "Amartya",  gender: "Male" },
+  { id: "neel",     label: "Neel",     gender: "Male" },
+  { id: "vian",     label: "Vian",     gender: "Male" },
+  { id: "arjun",    label: "Arjun",    gender: "Male" },
+  { id: "rahul",    label: "Rahul",    gender: "Male" },
+];
+
+const callingVoiceGrid = document.getElementById('calling-voice-grid');
+let _activeVoice = 'rahul';
+
+function buildVoiceGrid() {
+  callingVoiceGrid.innerHTML = '';
+  for (const v of SARVAM_VOICES) {
+    const btn = document.createElement('button');
+    btn.className = 'voice-btn' + (_activeVoice === v.id ? ' active' : '');
+    btn.dataset.voice = v.id;
+    btn.innerHTML = `<span class="voice-btn-name">${v.label}</span><span class="voice-btn-gender">${v.gender}</span>`;
+    btn.addEventListener('click', () => selectCallingVoice(v.id));
+    callingVoiceGrid.appendChild(btn);
+  }
+}
+
+function setActiveVoice(voice) {
+  _activeVoice = voice;
+  callingVoiceGrid.querySelectorAll('.voice-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.voice === voice);
+  });
+}
+
+async function loadCallingVoice() {
+  try {
+    const r = await fetch('/api/calling-voice', { headers: apiHeaders() });
+    if (r.ok) _activeVoice = (await r.json()).voice || 'rahul';
+  } catch {}
+  buildVoiceGrid();
+}
+
+async function selectCallingVoice(voice) {
+  const prev = _activeVoice;
+  setActiveVoice(voice);
+  try {
+    const r = await fetch('/api/calling-voice', {
+      method: 'POST',
+      headers: apiHeaders(),
+      body: JSON.stringify({ voice }),
+    });
+    if (!r.ok) setActiveVoice(prev);
+  } catch {
+    setActiveVoice(prev);
+  }
+}
+
+// ============================================================
 // Init
 // ============================================================
 loadProfile();
 loadContacts();
 loadCallLogs();
 loadCallingProvider();
+loadCallingVoice();

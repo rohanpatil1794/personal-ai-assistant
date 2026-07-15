@@ -55,8 +55,28 @@ _api_keys: dict = {}
 
 _PROVIDER_FILE = Path("llm_provider.json")
 _CALLING_PROVIDER_FILE = Path("calling_provider.json")
+_CALLING_VOICE_FILE   = Path("calling_voice.json")
 _VALID_PROVIDERS = ("groq", "anthropic", "openai")
 _calling_provider: str = "groq"
+_calling_voice:    str = "rahul"
+
+_SARVAM_VOICES = [
+    {"id": "meera",    "label": "Meera",    "gender": "Female"},
+    {"id": "pavithra", "label": "Pavithra", "gender": "Female"},
+    {"id": "maitreyi", "label": "Maitreyi", "gender": "Female"},
+    {"id": "diya",     "label": "Diya",     "gender": "Female"},
+    {"id": "anushka",  "label": "Anushka",  "gender": "Female"},
+    {"id": "maya",     "label": "Maya",     "gender": "Female"},
+    {"id": "misha",    "label": "Misha",    "gender": "Female"},
+    {"id": "arvind",   "label": "Arvind",   "gender": "Male"},
+    {"id": "amol",     "label": "Amol",     "gender": "Male"},
+    {"id": "amartya",  "label": "Amartya",  "gender": "Male"},
+    {"id": "neel",     "label": "Neel",     "gender": "Male"},
+    {"id": "vian",     "label": "Vian",     "gender": "Male"},
+    {"id": "arjun",    "label": "Arjun",    "gender": "Male"},
+    {"id": "rahul",    "label": "Rahul",    "gender": "Male"},
+]
+_SARVAM_VOICE_IDS = {v["id"] for v in _SARVAM_VOICES}
 
 
 def _load_provider() -> str:
@@ -90,6 +110,22 @@ def _save_calling_provider(provider: str) -> None:
     except Exception:
         pass
 
+
+def _load_calling_voice() -> str:
+    try:
+        if _CALLING_VOICE_FILE.exists():
+            return json.loads(_CALLING_VOICE_FILE.read_text()).get("voice", "rahul")
+    except Exception:
+        pass
+    return "rahul"
+
+
+def _save_calling_voice(voice: str) -> None:
+    try:
+        _CALLING_VOICE_FILE.write_text(json.dumps({"voice": voice}))
+    except Exception:
+        pass
+
 # Rate limiter — 10 requests per minute per IP on voice/text endpoints
 limiter = Limiter(key_func=get_remote_address)
 
@@ -108,7 +144,7 @@ async def verify_token(credentials: HTTPAuthorizationCredentials | None = Depend
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _settings, _conv, _tts_speaker, _call_store, _contacts
-    global _registry, _ha_integration, _current_provider, _api_keys, _calling_provider
+    global _registry, _ha_integration, _current_provider, _api_keys, _calling_provider, _calling_voice
     _settings = load_settings()
     _tts_speaker = await run_in_threadpool(
         tts_service.validate_speaker, _settings.SARVAM_API_KEY, _settings.TTS_SPEAKER, _settings.TTS_LANGUAGE
@@ -149,6 +185,7 @@ async def lifespan(app: FastAPI):
     # Load persisted provider choices and API keys
     _current_provider = _load_provider()
     _calling_provider = _load_calling_provider()
+    _calling_voice    = _load_calling_voice()
     _api_keys = {
         "groq": _settings.GROQ_API_KEY,
         "anthropic": _settings.ANTHROPIC_API_KEY,
@@ -313,6 +350,29 @@ async def set_calling_llm_provider(req: ProviderRequest, _: None = Depends(verif
     _save_calling_provider(provider)
     log.info("server: calling provider updated", provider=provider)
     return {"ok": True, "provider": provider}
+
+
+class VoiceRequest(BaseModel):
+    voice: str
+
+
+@app.get("/api/calling-voice")
+async def get_calling_voice(_: None = Depends(verify_token)):
+    """Return available Sarvam voices and the active calling voice."""
+    return {"voice": _calling_voice, "voices": _SARVAM_VOICES}
+
+
+@app.post("/api/calling-voice")
+async def set_calling_voice(req: VoiceRequest, _: None = Depends(verify_token)):
+    """Persist the Sarvam TTS voice used for outbound phone calls."""
+    global _calling_voice
+    voice = req.voice.lower().strip()
+    if voice not in _SARVAM_VOICE_IDS:
+        raise HTTPException(status_code=400, detail=f"Unknown voice '{voice}'.")
+    _calling_voice = voice
+    _save_calling_voice(voice)
+    log.info("server: calling voice updated", voice=voice)
+    return {"ok": True, "voice": voice}
 
 
 @app.post("/api/voice", response_model=AssistantResponse)
