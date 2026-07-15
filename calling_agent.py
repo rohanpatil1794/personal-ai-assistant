@@ -40,8 +40,22 @@ from livekit.agents.stt import STTCapabilities
 from livekit.agents.tts import TTSCapabilities
 from livekit.agents.types import NOT_GIVEN, APIConnectOptions
 from livekit.agents import RoomInputOptions
+from pathlib import Path
+
 from livekit.plugins import groq as lk_groq
 from livekit.plugins import silero
+
+try:
+    from livekit.plugins import openai as lk_openai
+    _HAS_LK_OPENAI = True
+except ImportError:
+    _HAS_LK_OPENAI = False
+
+try:
+    from livekit.plugins import anthropic as lk_anthropic
+    _HAS_LK_ANTHROPIC = True
+except ImportError:
+    _HAS_LK_ANTHROPIC = False
 
 load_dotenv()
 log = logging.getLogger("calling_agent")
@@ -49,6 +63,32 @@ log = logging.getLogger("calling_agent")
 CALLBACK_BASE = os.getenv("CALLING_AGENT_CALLBACK_BASE", "http://localhost:8000")
 SARVAM_API_KEY = os.getenv("SARVAM_API_KEY", "")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+
+_CALLING_PROVIDER_FILE = Path("calling_provider.json")
+
+
+def _get_calling_llm():
+    """Return a LiveKit LLM plugin based on the persisted calling provider setting."""
+    provider = "groq"
+    try:
+        if _CALLING_PROVIDER_FILE.exists():
+            provider = json.loads(_CALLING_PROVIDER_FILE.read_text()).get("provider", "groq")
+    except Exception:
+        pass
+
+    if provider == "openai" and OPENAI_API_KEY and _HAS_LK_OPENAI:
+        log.info("calling_agent: using OpenAI LLM")
+        return lk_openai.LLM(model="gpt-4o-mini", api_key=OPENAI_API_KEY)
+
+    if provider == "anthropic" and ANTHROPIC_API_KEY and _HAS_LK_ANTHROPIC:
+        log.info("calling_agent: using Anthropic LLM")
+        return lk_anthropic.LLM(model="claude-haiku-4-5", api_key=ANTHROPIC_API_KEY)
+
+    if provider != "groq":
+        log.warning("calling_agent: falling back to Groq (provider=%s unavailable)", provider)
+    return lk_groq.LLM(model="llama-3.3-70b-versatile", api_key=GROQ_API_KEY)
 
 
 # ---------------------------------------------------------------------------
@@ -286,7 +326,7 @@ async def entrypoint(ctx: JobContext) -> None:
 
     stt_plugin = SarvamSTT()
     tts_plugin = SarvamTTS()
-    llm_plugin = lk_groq.LLM(model="llama-3.3-70b-versatile", api_key=GROQ_API_KEY)
+    llm_plugin = _get_calling_llm()
     vad_plugin = silero.VAD.load()
 
     # Wait for the SIP participant to join

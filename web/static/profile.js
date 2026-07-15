@@ -269,8 +269,69 @@ function renderCallLogs(calls) {
 }
 
 // ============================================================
+// Calling agent LLM provider
+// ============================================================
+
+const callingModelSwitcher = document.getElementById('calling-model-switcher');
+const callingModelBtns = callingModelSwitcher ? [...callingModelSwitcher.querySelectorAll('.model-btn')] : [];
+
+function setActiveCallingProvider(provider) {
+  callingModelBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.provider === provider));
+}
+
+async function loadCallingProvider() {
+  try {
+    const r = await fetch('/api/calling-llm-provider', { headers: apiHeaders() });
+    if (!r.ok) return;
+    const { provider } = await r.json();
+    setActiveCallingProvider(provider);
+  } catch {}
+}
+
+callingModelBtns.forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const provider = btn.dataset.provider;
+    if (btn.classList.contains('active') || callingModelSwitcher.classList.contains('switching')) return;
+
+    callingModelSwitcher.classList.add('switching');
+    btn.classList.add('pending');
+    const prev = callingModelBtns.find(b => b.classList.contains('active'))?.dataset.provider;
+
+    try {
+      const r = await fetch('/api/calling-llm-provider', {
+        method: 'POST',
+        headers: apiHeaders(),
+        body: JSON.stringify({ provider }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        btn.style.color = 'var(--red)';
+        btn.textContent = data.detail?.slice(0, 28) || 'No API key';
+        setTimeout(() => {
+          btn.style.color = '';
+          btn.textContent = callingProviderLabel(provider);
+          if (prev) setActiveCallingProvider(prev);
+        }, 2500);
+      } else {
+        setActiveCallingProvider(provider);
+      }
+    } catch {
+      if (prev) setActiveCallingProvider(prev);
+    } finally {
+      callingModelSwitcher.classList.remove('switching');
+      btn.classList.remove('pending');
+    }
+  });
+});
+
+function callingProviderLabel(p) {
+  return { groq: 'Groq', anthropic: 'Claude', openai: 'OpenAI' }[p] || p;
+}
+
+// ============================================================
 // Init
 // ============================================================
 loadProfile();
 loadContacts();
 loadCallLogs();
+loadCallingProvider();

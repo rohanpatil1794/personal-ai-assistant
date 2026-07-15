@@ -6,7 +6,7 @@
   <title>Ronny — Settings</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=4">
+  <link rel="stylesheet" href="/static/style.css?v=5">
 </head>
 <body>
 
@@ -68,6 +68,16 @@
     <div class="config-pane" id="pane-calling">
 
       <section class="profile-section">
+        <p class="profile-section-title">Agent LLM</p>
+        <p class="calling-llm-hint">Language model used for outbound phone calls.</p>
+        <div id="calling-model-switcher" class="model-switcher" role="group" aria-label="Calling agent LLM provider">
+          <button class="model-btn" data-provider="groq" aria-label="Use Groq">Groq</button>
+          <button class="model-btn" data-provider="anthropic" aria-label="Use Claude">Claude</button>
+          <button class="model-btn" data-provider="openai" aria-label="Use OpenAI">OpenAI</button>
+        </div>
+      </section>
+
+      <section class="profile-section">
         <p class="profile-section-title">Contacts</p>
 
         <div id="contact-list" class="contact-list">
@@ -97,6 +107,6 @@
 
   </div>
 
-  <script src="/static/profile.js?v=4"></script>
+  <script src="/static/profile.js?v=5"></script>
 </body>
 </html>

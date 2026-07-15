@@ -54,7 +54,9 @@ _current_provider: str = "anthropic"
 _api_keys: dict = {}
 
 _PROVIDER_FILE = Path("llm_provider.json")
+_CALLING_PROVIDER_FILE = Path("calling_provider.json")
 _VALID_PROVIDERS = ("groq", "anthropic", "openai")
+_calling_provider: str = "groq"
 
 
 def _load_provider() -> str:
@@ -69,6 +71,22 @@ def _load_provider() -> str:
 def _save_provider(provider: str) -> None:
     try:
         _PROVIDER_FILE.write_text(json.dumps({"provider": provider}))
+    except Exception:
+        pass
+
+
+def _load_calling_provider() -> str:
+    try:
+        if _CALLING_PROVIDER_FILE.exists():
+            return json.loads(_CALLING_PROVIDER_FILE.read_text()).get("provider", "groq")
+    except Exception:
+        pass
+    return "groq"
+
+
+def _save_calling_provider(provider: str) -> None:
+    try:
+        _CALLING_PROVIDER_FILE.write_text(json.dumps({"provider": provider}))
     except Exception:
         pass
 
@@ -90,7 +108,7 @@ async def verify_token(credentials: HTTPAuthorizationCredentials | None = Depend
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _settings, _conv, _tts_speaker, _call_store, _contacts
-    global _registry, _ha_integration, _current_provider, _api_keys
+    global _registry, _ha_integration, _current_provider, _api_keys, _calling_provider
     _settings = load_settings()
     _tts_speaker = await run_in_threadpool(
         tts_service.validate_speaker, _settings.SARVAM_API_KEY, _settings.TTS_SPEAKER, _settings.TTS_LANGUAGE
@@ -128,8 +146,9 @@ async def lifespan(app: FastAPI):
     ))
     _ha_integration = _registry.get_integration("ha")
 
-    # Load persisted provider choice and API keys
+    # Load persisted provider choices and API keys
     _current_provider = _load_provider()
+    _calling_provider = _load_calling_provider()
     _api_keys = {
         "groq": _settings.GROQ_API_KEY,
         "anthropic": _settings.ANTHROPIC_API_KEY,
@@ -266,6 +285,33 @@ async def set_llm_provider(req: ProviderRequest, _: None = Depends(verify_token)
         log.error("server: provider switch failed", provider=provider, error=str(e))
         raise HTTPException(status_code=502, detail=f"Failed to initialise '{provider}': {e}")
 
+    return {"ok": True, "provider": provider}
+
+
+@app.get("/api/calling-llm-provider")
+async def get_calling_llm_provider(_: None = Depends(verify_token)):
+    """Return the active calling-agent provider and which ones have API keys."""
+    available = [p for p in _VALID_PROVIDERS if _api_keys.get(p)]
+    return {"provider": _calling_provider, "providers": list(_VALID_PROVIDERS), "available": available}
+
+
+@app.post("/api/calling-llm-provider")
+async def set_calling_llm_provider(req: ProviderRequest, _: None = Depends(verify_token)):
+    """Persist the LLM provider for outbound phone call agents."""
+    global _calling_provider
+
+    provider = req.provider
+    if provider not in _VALID_PROVIDERS:
+        raise HTTPException(status_code=400, detail=f"Invalid provider. Choose from: {list(_VALID_PROVIDERS)}")
+    if not _api_keys.get(provider):
+        raise HTTPException(
+            status_code=400,
+            detail=f"No API key configured for '{provider}'. Add {provider.upper()}_API_KEY to your .env file.",
+        )
+
+    _calling_provider = provider
+    _save_calling_provider(provider)
+    log.info("server: calling provider updated", provider=provider)
     return {"ok": True, "provider": provider}
 
 

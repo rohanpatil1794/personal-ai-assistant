@@ -1050,6 +1050,12 @@ header {
 }
 .config-pane.active { display: flex; }
 
+.calling-llm-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
 .config-empty-state {
   display: flex;
   flex-direction: column;
