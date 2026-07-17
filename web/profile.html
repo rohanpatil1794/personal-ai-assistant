@@ -67,47 +67,57 @@
     <!-- Outbound Calling pane -->
     <div class="config-pane" id="pane-calling">
 
-      <section class="profile-section">
-        <p class="profile-section-title">Agent LLM</p>
-        <p class="calling-llm-hint">Language model used for outbound phone calls.</p>
-        <div id="calling-model-switcher" class="model-switcher" role="group" aria-label="Calling agent LLM provider">
-          <button class="model-btn" data-provider="groq" aria-label="Use Groq">Groq</button>
-          <button class="model-btn" data-provider="anthropic" aria-label="Use Claude">Claude</button>
-          <button class="model-btn" data-provider="openai" aria-label="Use OpenAI">OpenAI</button>
-        </div>
-      </section>
+      <!-- Left column: agent configuration -->
+      <div class="calling-col">
 
-      <section class="profile-section">
-        <p class="profile-section-title">Voice</p>
-        <p class="calling-llm-hint">Sarvam voice used for outbound phone calls.</p>
-        <div id="calling-voice-grid" class="voice-grid" role="group" aria-label="Calling agent voice"></div>
-      </section>
+        <section class="profile-section">
+          <p class="profile-section-title">Agent LLM</p>
+          <p class="calling-llm-hint">Language model used for outbound phone calls.</p>
+          <div id="calling-model-switcher" class="model-switcher calling-model-switcher" role="group" aria-label="Calling agent LLM provider">
+            <button class="model-btn" data-provider="groq" aria-label="Use Groq">Groq</button>
+            <button class="model-btn" data-provider="anthropic" aria-label="Use Claude">Claude</button>
+            <button class="model-btn" data-provider="openai" aria-label="Use OpenAI">OpenAI</button>
+          </div>
+        </section>
 
-      <section class="profile-section">
-        <p class="profile-section-title">Contacts</p>
+        <section class="profile-section">
+          <p class="profile-section-title">Voice</p>
+          <p class="calling-llm-hint">Sarvam AI voice for outbound calls.</p>
+          <div id="calling-voice-grid" class="voice-grid" role="group" aria-label="Calling agent voice"></div>
+        </section>
 
-        <div id="contact-list" class="contact-list">
-          <p class="contact-empty">Loading…</p>
-        </div>
+      </div>
 
-        <div class="add-contact-form">
-          <input id="contact-name-input" class="profile-input" type="text" placeholder="Name" autocomplete="off">
-          <input id="contact-phone-input" class="profile-input" type="tel" placeholder="Phone number" autocomplete="off">
-          <button id="contact-add-btn" class="contact-add-btn" aria-label="Add contact">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <line x1="12" y1="5" x2="12" y2="19"/>
-              <line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-          </button>
-        </div>
-      </section>
+      <!-- Right column: call data -->
+      <div class="calling-col">
 
-      <section class="profile-section">
-        <p class="profile-section-title">Call Logs</p>
-        <div id="call-log-list">
-          <p class="contact-empty">Loading…</p>
-        </div>
-      </section>
+        <section class="profile-section">
+          <p class="profile-section-title">Contacts</p>
+
+          <div id="contact-list" class="contact-list">
+            <p class="contact-empty">Loading…</p>
+          </div>
+
+          <div class="add-contact-form">
+            <input id="contact-name-input" class="profile-input" type="text" placeholder="Name" autocomplete="off">
+            <input id="contact-phone-input" class="profile-input" type="tel" placeholder="Phone number" autocomplete="off">
+            <button id="contact-add-btn" class="contact-add-btn" aria-label="Add contact">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </button>
+          </div>
+        </section>
+
+        <section class="profile-section">
+          <p class="profile-section-title">Call Logs</p>
+          <div id="call-log-list">
+            <p class="contact-empty">Loading…</p>
+          </div>
+        </section>
+
+      </div>
 
     </div>
 

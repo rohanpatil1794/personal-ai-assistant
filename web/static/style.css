@@ -1050,6 +1050,36 @@ header {
 }
 .config-pane.active { display: flex; }
 
+/* Two-column grid layout for the calling pane */
+#pane-calling.active {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  max-width: 840px;
+  align-items: start;
+  gap: 1rem;
+}
+
+.calling-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.calling-col .profile-section {
+  max-width: 100%;
+}
+
+/* LLM switcher stretches full width inside its card */
+.calling-model-switcher {
+  width: 100%;
+  justify-content: stretch;
+}
+.calling-model-switcher .model-btn {
+  flex: 1;
+  text-align: center;
+}
+
 .calling-llm-hint {
   font-size: 0.78rem;
   color: var(--text-muted);
@@ -1116,6 +1146,13 @@ header {
   color: var(--text-muted);
   line-height: 1.65;
   max-width: 260px;
+}
+
+@media (max-width: 700px) {
+  #pane-calling.active {
+    grid-template-columns: 1fr;
+    max-width: 480px;
+  }
 }
 
 @media (max-width: 640px) {
