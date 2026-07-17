@@ -54,6 +54,7 @@ def log_call(
     summary: str | None = None,
     transcript: list | None = None,
     completed_at: str | None = None,
+    started_at: str | None = None,
 ) -> None:
     try:
         with sqlite3.connect(DB_PATH) as conn:
@@ -71,7 +72,7 @@ def log_call(
                 """,
                 (
                     call_id,
-                    datetime.now().isoformat(timespec="milliseconds"),
+                    started_at or datetime.now().isoformat(timespec="milliseconds"),
                     contact,
                     phone,
                     mission,

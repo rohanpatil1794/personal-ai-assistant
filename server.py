@@ -443,6 +443,7 @@ async def call_result_webhook(payload: CallResultPayload):
         summary=payload.summary,
         transcript=payload.transcript,
         completed_at=record.completed_at.isoformat() if record and record.completed_at else None,
+        started_at=record.created_at.isoformat() if record else None,
     )
     log.info("server: call result received", call_id=payload.call_id, status=payload.status)
     return {"ok": True}
