@@ -67,9 +67,8 @@
     <!-- Outbound Calling pane -->
     <div class="config-pane" id="pane-calling">
 
-      <!-- Left column: agent configuration -->
+      <!-- Column 1: LLM -->
       <div class="calling-col">
-
         <section class="profile-section">
           <p class="profile-section-title">Agent LLM</p>
           <p class="calling-llm-hint">Language model used for outbound phone calls.</p>
@@ -79,25 +78,25 @@
             <button class="model-btn" data-provider="openai" aria-label="Use OpenAI">OpenAI</button>
           </div>
         </section>
+      </div>
 
+      <!-- Column 2: Voice -->
+      <div class="calling-col">
         <section class="profile-section">
           <p class="profile-section-title">Voice</p>
           <p class="calling-llm-hint">Sarvam AI voice for outbound calls.</p>
           <div id="calling-voice-grid" class="voice-grid" role="group" aria-label="Calling agent voice"></div>
         </section>
-
       </div>
 
-      <!-- Right column: call data -->
+      <!-- Column 3: Contacts + Call Logs -->
       <div class="calling-col">
 
         <section class="profile-section">
           <p class="profile-section-title">Contacts</p>
-
           <div id="contact-list" class="contact-list">
             <p class="contact-empty">Loading…</p>
           </div>
-
           <div class="add-contact-form">
             <input id="contact-name-input" class="profile-input" type="text" placeholder="Name" autocomplete="off">
             <input id="contact-phone-input" class="profile-input" type="tel" placeholder="Phone number" autocomplete="off">
