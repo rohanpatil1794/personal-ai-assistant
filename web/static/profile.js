@@ -395,9 +395,65 @@ async function selectCallingVoice(voice) {
 }
 
 // ============================================================
+// Calendar status
+// ============================================================
+
+async function loadCalendarStatus() {
+  const dot  = document.getElementById('calendar-status-dot');
+  const text = document.getElementById('calendar-status-text');
+  if (!dot || !text) return;
+  try {
+    const r = await fetch('/api/calendar-status', { headers: apiHeaders() });
+    if (!r.ok) { text.textContent = 'Error'; dot.className = 'integration-dot error'; return; }
+    const { connected, reason } = await r.json();
+    if (connected) {
+      dot.className  = 'integration-dot ok';
+      text.textContent = 'Connected';
+    } else {
+      dot.className  = 'integration-dot error';
+      text.textContent = reason || 'Not connected';
+    }
+  } catch {
+    text.textContent = 'Unavailable';
+    dot.className = 'integration-dot error';
+  }
+}
+
+// ============================================================
+// Reset conversation
+// ============================================================
+
+const resetConvBtn = document.getElementById('reset-conv-btn');
+if (resetConvBtn) {
+  resetConvBtn.addEventListener('click', async () => {
+    resetConvBtn.disabled = true;
+    resetConvBtn.textContent = 'Resetting…';
+    try {
+      const r = await fetch('/api/reset-conversation', { method: 'POST', headers: apiHeaders() });
+      if (r.ok) {
+        resetConvBtn.textContent = 'Done ✓';
+        resetConvBtn.classList.add('saved');
+        setTimeout(() => {
+          resetConvBtn.textContent = 'Reset conversation';
+          resetConvBtn.classList.remove('saved');
+          resetConvBtn.disabled = false;
+        }, 2000);
+      } else {
+        resetConvBtn.textContent = 'Failed';
+        setTimeout(() => { resetConvBtn.textContent = 'Reset conversation'; resetConvBtn.disabled = false; }, 2000);
+      }
+    } catch {
+      resetConvBtn.textContent = 'Failed';
+      setTimeout(() => { resetConvBtn.textContent = 'Reset conversation'; resetConvBtn.disabled = false; }, 2000);
+    }
+  });
+}
+
+// ============================================================
 // Init
 // ============================================================
 loadProfile();
+loadCalendarStatus();
 loadContacts();
 loadCallLogs();
 loadCallingProvider();

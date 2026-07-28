@@ -798,6 +798,68 @@ header {
   color: var(--green);
 }
 
+/* Integration status row */
+.integration-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.integration-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.integration-name {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.integration-status {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.integration-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: rgba(150,170,220,0.3);
+}
+.integration-dot.ok    { background: var(--green); box-shadow: 0 0 6px var(--green-glow); }
+.integration-dot.error { background: var(--red);   box-shadow: 0 0 6px var(--red-glow); }
+
+/* Reset conversation button */
+.reset-conv-btn {
+  align-self: flex-start;
+  background: rgba(248,113,113,0.08);
+  border: 1px solid rgba(248,113,113,0.25);
+  border-radius: var(--radius);
+  color: var(--red);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.5rem 1.2rem;
+  min-height: 36px;
+  cursor: pointer;
+  transition: background 150ms, box-shadow 150ms;
+}
+.reset-conv-btn:hover:not(:disabled) {
+  background: rgba(248,113,113,0.15);
+  box-shadow: 0 0 12px rgba(248,113,113,0.1);
+}
+.reset-conv-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.reset-conv-btn.saved {
+  background: rgba(52,211,153,0.12);
+  border-color: rgba(52,211,153,0.35);
+  color: var(--green);
+}
+
 /* Contacts list */
 .contact-list {
   display: flex;

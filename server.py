@@ -542,6 +542,32 @@ async def profile_page():
     return HTMLResponse(html)
 
 
+@app.get("/api/calendar-status")
+async def calendar_status(_: None = Depends(verify_token)):
+    """Return whether Google Calendar is authorised and reachable."""
+    gcal = _registry.get_integration("calendar") if _registry else None
+    if gcal is None:
+        return {"connected": False, "reason": "Integration not loaded."}
+    try:
+        client = gcal._gcal
+        if not client.available:
+            return {"connected": False, "reason": "Token missing or expired. Re-run integrations/google_auth.py."}
+        return {"connected": True}
+    except Exception as e:
+        return {"connected": False, "reason": str(e)}
+
+
+@app.post("/api/reset-conversation")
+async def reset_conversation(_: None = Depends(verify_token)):
+    """Reset the LLM conversation session (clears history, rebuilds system prompt)."""
+    global _conv
+    if _conv is None:
+        raise HTTPException(status_code=503, detail="Conversation not initialised.")
+    await run_in_threadpool(_conv.start)
+    log.info("server: conversation reset")
+    return {"ok": True}
+
+
 @app.get("/api/call-logs")
 async def get_call_logs(_: None = Depends(verify_token)):
     return {"calls": db.get_call_logs(200)}

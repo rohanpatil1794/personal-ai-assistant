@@ -48,6 +48,23 @@
 
         <button id="profile-save-btn" class="profile-save-btn">Save</button>
       </section>
+
+      <section class="profile-section">
+        <p class="profile-section-title">Integrations</p>
+        <div class="integration-row">
+          <div class="integration-info">
+            <span class="integration-name">Google Calendar</span>
+            <span id="calendar-status-text" class="integration-status">Checking…</span>
+          </div>
+          <span id="calendar-status-dot" class="integration-dot"></span>
+        </div>
+      </section>
+
+      <section class="profile-section">
+        <p class="profile-section-title">Session</p>
+        <p class="calling-llm-hint">Reset clears the conversation history and rebuilds the system prompt. Useful if Ronny seems confused or off-track.</p>
+        <button id="reset-conv-btn" class="reset-conv-btn">Reset conversation</button>
+      </section>
     </div>
 
     <!-- Documents pane -->
