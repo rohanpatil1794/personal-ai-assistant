@@ -52,6 +52,9 @@ class _Response:
 # LLMClient
 # ---------------------------------------------------------------------------
 
+MAX_HISTORY_TURNS = 40  # cap at 20 exchanges to prevent unbounded token growth
+
+
 class LLMClient:
     """
     Unified client for Groq, Anthropic, and OpenAI.
@@ -116,8 +119,15 @@ class LLMClient:
         self._history = []
         return self
 
+    def _trim_history(self) -> None:
+        """Drop oldest messages when history exceeds the cap."""
+        if len(self._history) > MAX_HISTORY_TURNS:
+            self._history = self._history[-MAX_HISTORY_TURNS:]
+            log.info("llm: history trimmed", kept=MAX_HISTORY_TURNS)
+
     def send_message(self, user_text: str):
         """Append user message and return a completion response."""
+        self._trim_history()
         if self._provider == "anthropic":
             self._history.append({"role": "user", "content": user_text})
             return self._ant_call()

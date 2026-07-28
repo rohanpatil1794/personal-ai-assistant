@@ -60,6 +60,7 @@ class ConversationManager:
         self._ha = ha          # HAIntegration kept for start() entity fetch
         self._registry = registry
         self._started = False
+        self._session_date: str = ""
 
     def start(self) -> None:
         """Fetch HA entities and initialise the chat session."""
@@ -76,6 +77,7 @@ class ConversationManager:
             entity_lines = "(Could not fetch entity list)"
 
         today = datetime.now().strftime("%A, %d %B %Y")
+        self._session_date = datetime.now().strftime("%Y-%m-%d")
         system_prompt = SYSTEM_PROMPT_TEMPLATE.format(entity_list=entity_lines, today=today)
 
         prof = profile_store.load()
@@ -101,6 +103,12 @@ class ConversationManager:
         """Send a user message, handle tool calls, and return the final reply."""
         if not self._started:
             raise LLMError("ConversationManager.start() has not been called.")
+
+        # Rebuild session if the date has rolled over (server ran past midnight)
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        if self._session_date and current_date != self._session_date:
+            log.info("conversation: date changed — rebuilding session", old=self._session_date, new=current_date)
+            self.start()
 
         # Handle cancel sentinel: clear pending order without involving LLM
         if user_text.strip() == "cancel the order":
