@@ -1,5 +1,5 @@
 """Weather integration — current conditions and forecasts via Open-Meteo."""
-from integrations.base import BaseIntegration
+from integrations.base import Integration as BaseIntegration
 from integrations.weather_client import get_current_weather, get_weather_forecast
 from utils.logger import get_logger
 
