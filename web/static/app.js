@@ -19,6 +19,8 @@ const orderConfirmBtn = document.getElementById('order-confirm-btn');
 const orderCancelBtn  = document.getElementById('order-cancel-btn');
 const convBtn         = document.getElementById('conv-btn');
 const convLabel       = document.getElementById('conv-label');
+const promptChips     = document.getElementById('prompt-chips');
+const retryBtn        = document.getElementById('retry-btn');
 
 let state = 'idle';
 let mediaRecorder = null;
@@ -26,6 +28,9 @@ let audioChunks = [];
 let audioCtx = null;
 let busy = false;
 let orderDismissTimer = null;
+let lastText = null;
+let lastBlob = null;
+let chipsHidden = false;
 
 // Caption state
 let captionEl = null;
@@ -219,9 +224,17 @@ function setState(s, customLabel) {
   textInput.disabled = locked;
   sendBtn.disabled   = locked;
 
+  retryBtn.hidden = s !== 'error';
+
   if (s === 'armed' && convMode) {
     startArmedTimers();
   }
+}
+
+function hideChips() {
+  if (chipsHidden) return;
+  chipsHidden = true;
+  promptChips.classList.add('hidden');
 }
 
 // ============================================================
@@ -375,6 +388,9 @@ function _afterRequest() {
 }
 
 async function sendVoiceBlob(blob) {
+  lastBlob = blob;
+  lastText = null;
+  hideChips();
   busy = true;
   setState('thinking');
   try {
@@ -396,6 +412,7 @@ async function sendVoiceBlob(blob) {
 
 async function sendText(text, silent = false) {
   if (!text.trim() || busy) return;
+  if (!silent) { lastText = text; lastBlob = null; hideChips(); }
 
   // Silent pings ("are you still there?") must not block VAD —
   // fire in the background without locking the UI or setting busy.
@@ -494,6 +511,28 @@ textInput.addEventListener('keydown', e => {
 });
 
 document.addEventListener('pointerdown', () => getAudioCtx().resume(), { once: true });
+
+// ============================================================
+// Prompt chips
+// ============================================================
+
+document.querySelectorAll('.prompt-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const prompt = chip.dataset.prompt;
+    if (!prompt || busy) return;
+    textInput.value = '';
+    sendText(prompt);
+  });
+});
+
+// ============================================================
+// Retry button
+// ============================================================
+
+retryBtn.addEventListener('click', () => {
+  if (lastBlob) sendVoiceBlob(lastBlob);
+  else if (lastText) sendText(lastText);
+});
 
 // ============================================================
 // Model switcher

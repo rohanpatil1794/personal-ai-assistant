@@ -55,6 +55,18 @@
     <!-- Disappearing caption — shown when agent speaks -->
     <div id="caption-box" aria-live="polite" aria-atomic="true"></div>
 
+    <!-- Example prompt chips — hidden once user starts interacting -->
+    <div id="prompt-chips" aria-label="Example prompts">
+      <button class="prompt-chip" data-prompt="What's the weather in Mumbai?">🌤 Weather</button>
+      <button class="prompt-chip" data-prompt="What's on my calendar today?">📅 Calendar</button>
+      <button class="prompt-chip" data-prompt="Turn off all the lights">💡 Lights</button>
+      <button class="prompt-chip" data-prompt="Order dinner from Swiggy">🍱 Order food</button>
+      <button class="prompt-chip" data-prompt="Call mom and tell her I'll be late">📞 Call</button>
+    </div>
+
+    <!-- Retry button — visible only on error state -->
+    <button id="retry-btn" aria-label="Retry" hidden>Try again</button>
+
     <!-- Controls -->
     <div id="controls">
       <button id="conv-btn" aria-label="Start conversation mode">
