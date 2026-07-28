@@ -421,7 +421,7 @@ class CallResultPayload(BaseModel):
 
 
 @app.post("/api/internal/call-result")
-async def call_result_webhook(payload: CallResultPayload):
+async def call_result_webhook(payload: CallResultPayload, _: None = Depends(verify_token)):
     """Called by calling_agent.py when a phone call ends."""
     if _call_store is None:
         raise HTTPException(status_code=503, detail="Call store not initialised.")

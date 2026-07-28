@@ -61,6 +61,7 @@ load_dotenv()
 log = logging.getLogger("calling_agent")
 
 CALLBACK_BASE = os.getenv("CALLING_AGENT_CALLBACK_BASE", "http://localhost:8000")
+API_TOKEN     = os.getenv("API_TOKEN", "")
 SARVAM_API_KEY = os.getenv("SARVAM_API_KEY", "")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
@@ -198,8 +199,9 @@ async def post_result(
         "transcript": transcript or [],
     }
     try:
+        headers = {"Authorization": f"Bearer {API_TOKEN}"} if API_TOKEN else {}
         async with httpx.AsyncClient(timeout=10) as client:
-            await client.post(callback_url, json=payload)
+            await client.post(callback_url, json=payload, headers=headers)
         log.info("calling_agent: posted result call_id=%s status=%s", call_id, status)
     except Exception as e:
         log.error("calling_agent: failed to post result call_id=%s error=%s", call_id, e)
