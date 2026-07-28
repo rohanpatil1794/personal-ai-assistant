@@ -29,6 +29,7 @@ from integrations.swiggy_integration import SwiggyIntegration
 from integrations.google_calendar_client import GoogleCalendarClient
 from integrations.google_calendar_integration import GoogleCalendarIntegration
 from integrations.calling_integration import CallingIntegration
+from integrations.weather_integration import WeatherIntegration
 from integrations.livekit_client import LiveKitClient
 from integrations.contacts import ContactBook
 from integrations.call_store import CallStore
@@ -176,6 +177,7 @@ async def lifespan(app: FastAPI):
     _registry.register(HAIntegration(ha_client))
     _registry.register(SwiggyIntegration(swiggy_client))
     _registry.register(GoogleCalendarIntegration(gcal_client))
+    _registry.register(WeatherIntegration())
     _registry.register(CallingIntegration(
         livekit_client, contacts, _call_store,
         callback_base_url=_settings.CALLING_AGENT_CALLBACK_BASE,
