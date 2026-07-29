@@ -163,6 +163,8 @@ class LLMClient:
         if self._tools_raw:
             kwargs["tools"] = self._tools_raw
             kwargs["tool_choice"] = "auto"
+            if self._provider == "groq":
+                kwargs["parallel_tool_calls"] = False
         response = self._client.chat.completions.create(**kwargs)
 
         # Serialize assistant message back into history as a plain dict so
