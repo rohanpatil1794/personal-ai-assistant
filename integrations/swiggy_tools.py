@@ -196,6 +196,31 @@ SWIGGY_TOOLS = [
             "parameters": {"type": "object", "properties": {}},
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "swiggy_track_grocery_order",
+            "description": "Track the delivery status of an Instamart grocery order.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "order_id": {"type": "string", "description": "Order ID from swiggy_confirm_grocery_order."},
+                },
+                "required": ["order_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "swiggy_clear_grocery_cart",
+            "description": (
+                "Empty the Instamart grocery cart. Use when the user wants to start over "
+                "or abandon the current grocery selection."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
 
     # --- Dineout ---
     {

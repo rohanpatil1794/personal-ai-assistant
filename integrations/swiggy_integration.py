@@ -177,6 +177,16 @@ class SwiggyIntegration(Integration):
                 self.clear_pending_order()
                 return {"success": True, "order": result}
 
+            elif tool_name == "swiggy_track_grocery_order":
+                status = self._swiggy.track_grocery_order(args["order_id"])
+                return {"tracking": status}
+
+            elif tool_name == "swiggy_clear_grocery_cart":
+                result = self._swiggy.clear_grocery_cart()
+                if self._pending_order_type == "grocery":
+                    self.clear_pending_order()
+                return {"success": True, "cart": result}
+
             # --- Dineout ---
             elif tool_name == "swiggy_search_dineout":
                 restaurants = self._swiggy.search_dineout(args["query"], args["latitude"], args["longitude"])
