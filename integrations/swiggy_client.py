@@ -17,8 +17,18 @@ class SwiggyError(Exception):
 
 class SwiggyClient:
     def __init__(self, access_token: str) -> None:
-        self._headers = {
-            "Authorization": f"Bearer {access_token}",
+        self._access_token = (access_token or "").strip()
+
+    @property
+    def available(self) -> bool:
+        return bool(self._access_token)
+
+    @property
+    def _headers(self) -> dict:
+        # Built per request rather than at construction so a future token
+        # refresh only needs to reassign self._access_token.
+        return {
+            "Authorization": f"Bearer {self._access_token}",
             "Content-Type": "application/json",
         }
 
