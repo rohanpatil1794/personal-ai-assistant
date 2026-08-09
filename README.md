@@ -14,13 +14,17 @@ A Python-based voice AI assistant that controls smart home devices, orders food,
 - Groq `llama-3.3-70b-versatile` as the LLM with OpenAI-compatible function calling
 - Deployed as a FastAPI web server exposed via Cloudflare Tunnel (your own domain)
 
-### 🔄 Phase 2 — Swiggy Food & Grocery Ordering *(waiting for OAuth token)*
+### ✅ Phase 2 — Swiggy Food & Grocery Ordering *(set `SWIGGY_ACCESS_TOKEN` to enable)*
 - Order food from restaurants via Swiggy voice commands
-- Order groceries via Swiggy Instamart
+- Order groceries via Swiggy Instamart, with order tracking and cart clearing
+- Coupon discovery and application before checkout
+- Order history and Instamart "go-to" items for quick reorders
 - Book dine-out restaurant tables (free reservations)
 - Physical confirmation modal in the browser UI before any order is placed
-- Cash on Delivery payment (COD only, ₹1,000 cart cap per Swiggy Builders Club v1)
-- Address management — ask user to choose from saved addresses
+- Which cart gets checked out is decided from recorded order state, never by the LLM
+- Cash on Delivery payment (COD only, ₹1,000 cart cap enforced in code)
+- Address management — reads saved addresses; adding one is done in the Swiggy app
+- Skipped cleanly at startup when no token is set; check `/api/swiggy-status`
 
 ### ✅ Phase 3 — Google Calendar Integration
 - List upcoming events: *"What's on my calendar this week?"*
