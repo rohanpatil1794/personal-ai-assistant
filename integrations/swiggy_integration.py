@@ -15,7 +15,7 @@ class SwiggyIntegration(Integration):
         self._pending_order_type: str | None = None  # "food" or "grocery"
 
     def is_available(self) -> bool:
-        return bool(self._swiggy)
+        return self._swiggy is not None and self._swiggy.available
 
     @classmethod
     def get_tools(cls) -> list[dict]:
