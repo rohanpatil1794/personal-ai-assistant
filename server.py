@@ -557,6 +557,19 @@ async def calendar_status(_: None = Depends(verify_token)):
         return {"connected": False, "reason": str(e)}
 
 
+@app.get("/api/swiggy-status")
+async def swiggy_status(_: None = Depends(verify_token)):
+    """Return whether Swiggy has a usable access token."""
+    if _registry is None:
+        return {"connected": False, "reason": "Server is still starting up."}
+    if _registry.get_integration("swiggy") is None:
+        return {
+            "connected": False,
+            "reason": "SWIGGY_ACCESS_TOKEN is not set in .env — integration was skipped at startup.",
+        }
+    return {"connected": True}
+
+
 @app.post("/api/reset-conversation")
 async def reset_conversation(_: None = Depends(verify_token)):
     """Reset the LLM conversation session (clears history, rebuilds system prompt)."""
