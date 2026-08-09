@@ -5,6 +5,40 @@ from utils.logger import get_logger
 
 log = get_logger(__name__)
 
+# Hard ceiling on any single order, in rupees. Previously prose in the tool
+# descriptions only, which the model was free to ignore.
+CART_CAP_RUPEES = 1000
+
+# Total is read from whichever of these the API actually returns. Narrow this
+# to the real key once a live cart response has been captured.
+_TOTAL_KEYS = ("total", "cartTotal", "grandTotal", "orderTotal", "finalTotal", "totalAmount")
+
+
+def _cart_total(cart: dict) -> float | None:
+    """
+    Best-effort read of a cart's total. Returns None when the total cannot be
+    determined, which callers must treat as 'unknown', never as zero.
+    """
+    if not isinstance(cart, dict):
+        return None
+
+    for scope in (cart, cart.get("data"), cart.get("cart")):
+        if not isinstance(scope, dict):
+            continue
+        for key in _TOTAL_KEYS:
+            value = scope.get(key)
+            if isinstance(value, bool):
+                continue
+            if isinstance(value, (int, float)):
+                return float(value)
+            if isinstance(value, str):
+                cleaned = value.replace("₹", "").replace(",", "").strip()
+                try:
+                    return float(cleaned)
+                except ValueError:
+                    continue
+    return None
+
 
 class SwiggyIntegration(Integration):
     name = "swiggy"
@@ -32,6 +66,50 @@ class SwiggyIntegration(Integration):
         self._pending_order = None
         self._pending_order_type = None
 
+    def _stage_order(self, cart: dict, order_type: str) -> dict:
+        """Cap-check a cart, then stage it for user confirmation."""
+        total = _cart_total(cart)
+
+        if total is not None and total > CART_CAP_RUPEES:
+            self.clear_pending_order()
+            log.warning("swiggy: cart over cap", type=order_type, total=total, cap=CART_CAP_RUPEES)
+            return {
+                "error": (
+                    f"Cart total is ₹{total:.0f}, over the ₹{CART_CAP_RUPEES} limit. "
+                    "Remove some items before ordering."
+                )
+            }
+
+        self._pending_order = cart
+        self._pending_order_type = order_type
+        staged = {
+            "confirmation_required": True,
+            "order_summary": cart,
+            "payment_method": "Cash on Delivery",
+            "message": "Order summary ready. Awaiting user confirmation via button.",
+        }
+        if total is None:
+            # Neither block nor silently allow — the confirmation UI puts a human
+            # in front of the summary, so let it through but flag it.
+            log.warning("swiggy: cart total unreadable, deferring to human confirmation", type=order_type)
+            staged["cart_total_unknown"] = True
+        return staged
+
+    def _recheck_cap(self, order_type: str) -> dict | None:
+        """Re-read the live cart just before checkout. Error dict if over cap, else None."""
+        cart = self._swiggy.get_food_cart() if order_type == "food" else self._swiggy.get_grocery_cart()
+        total = _cart_total(cart)
+        if total is not None and total > CART_CAP_RUPEES:
+            self.clear_pending_order()
+            log.warning("swiggy: cart over cap at confirm", type=order_type, total=total)
+            return {
+                "error": (
+                    f"Cart total is ₹{total:.0f}, over the ₹{CART_CAP_RUPEES} limit. "
+                    "Order was not placed."
+                )
+            }
+        return None
+
     def dispatch(self, tool_name: str, args: dict) -> dict:
         try:
             # --- Shared ---
@@ -57,19 +135,14 @@ class SwiggyIntegration(Integration):
                 return {"cart": cart}
 
             elif tool_name == "swiggy_place_food_order":
-                cart = self._swiggy.get_food_cart()
-                self._pending_order = cart
-                self._pending_order_type = "food"
-                return {
-                    "confirmation_required": True,
-                    "order_summary": cart,
-                    "payment_method": "Cash on Delivery",
-                    "message": "Order summary ready. Awaiting user confirmation via button.",
-                }
+                return self._stage_order(self._swiggy.get_food_cart(), "food")
 
             elif tool_name == "swiggy_confirm_food_order":
                 if not self._pending_order or self._pending_order_type != "food":
                     return {"error": "No pending food order to confirm."}
+                over_cap = self._recheck_cap("food")
+                if over_cap:
+                    return over_cap
                 result = self._swiggy.place_food_order()
                 self.clear_pending_order()
                 return {"success": True, "order": result}
@@ -92,19 +165,14 @@ class SwiggyIntegration(Integration):
                 return {"cart": cart}
 
             elif tool_name == "swiggy_place_grocery_order":
-                cart = self._swiggy.get_grocery_cart()
-                self._pending_order = cart
-                self._pending_order_type = "grocery"
-                return {
-                    "confirmation_required": True,
-                    "order_summary": cart,
-                    "payment_method": "Cash on Delivery",
-                    "message": "Order summary ready. Awaiting user confirmation via button.",
-                }
+                return self._stage_order(self._swiggy.get_grocery_cart(), "grocery")
 
             elif tool_name == "swiggy_confirm_grocery_order":
                 if not self._pending_order or self._pending_order_type != "grocery":
                     return {"error": "No pending grocery order to confirm."}
+                over_cap = self._recheck_cap("grocery")
+                if over_cap:
+                    return over_cap
                 result = self._swiggy.checkout_grocery()
                 self.clear_pending_order()
                 return {"success": True, "order": result}
