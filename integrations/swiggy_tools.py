@@ -87,6 +87,32 @@ SWIGGY_TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "swiggy_fetch_coupons",
+            "description": (
+                "List coupons available for the current food cart. Check this before "
+                "placing a food order so the user does not miss a discount."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "swiggy_apply_coupon",
+            "description": "Apply a coupon code to the current food cart.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "coupon_code": {"type": "string", "description": "Coupon code from swiggy_fetch_coupons."},
+                    "address_id": {"type": "string", "description": "Delivery address ID."},
+                },
+                "required": ["coupon_code", "address_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "swiggy_place_food_order",
             "description": (
                 "Show the user an order summary and request confirmation before placing the order. "

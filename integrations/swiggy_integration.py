@@ -134,6 +134,14 @@ class SwiggyIntegration(Integration):
                 cart = self._swiggy.get_food_cart()
                 return {"cart": cart}
 
+            elif tool_name == "swiggy_fetch_coupons":
+                coupons = self._swiggy.fetch_coupons()
+                return {"coupons": coupons}
+
+            elif tool_name == "swiggy_apply_coupon":
+                result = self._swiggy.apply_coupon(args["coupon_code"], args["address_id"])
+                return {"success": True, "cart": result}
+
             elif tool_name == "swiggy_place_food_order":
                 return self._stage_order(self._swiggy.get_food_cart(), "food")
 
