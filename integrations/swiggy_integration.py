@@ -208,6 +208,12 @@ class SwiggyIntegration(Integration):
                 restaurants = self._swiggy.search_dineout(args["query"], args["latitude"], args["longitude"])
                 return {"restaurants": restaurants}
 
+            elif tool_name == "swiggy_get_dineout_details":
+                details = self._swiggy.get_dineout_details(
+                    args["restaurant_id"], args["latitude"], args["longitude"]
+                )
+                return {"restaurant": details}
+
             elif tool_name == "swiggy_get_dineout_slots":
                 slots = self._swiggy.get_slots(
                     args["restaurant_id"], args["date"], args["latitude"], args["longitude"]

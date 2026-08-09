@@ -297,6 +297,25 @@ SWIGGY_TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "swiggy_get_dineout_details",
+            "description": (
+                "Get full details for a Dineout restaurant — cuisine, offers, ratings and "
+                "location. Use to answer questions about a restaurant before booking."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "restaurant_id": {"type": "string", "description": "Restaurant ID from swiggy_search_dineout."},
+                    "latitude": {"type": "number", "description": "User's latitude."},
+                    "longitude": {"type": "number", "description": "User's longitude."},
+                },
+                "required": ["restaurant_id", "latitude", "longitude"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "swiggy_get_dineout_slots",
             "description": "Get available table booking slots for a restaurant on a given date.",
             "parameters": {
