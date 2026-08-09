@@ -148,6 +148,18 @@ SWIGGY_TOOLS = [
         },
     },
 
+    {
+        "type": "function",
+        "function": {
+            "name": "swiggy_get_food_orders",
+            "description": (
+                "List the user's recent food orders. Use for questions like "
+                "'what did I order last time' or to find an order ID for tracking."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+
     # --- Grocery (Instamart) ---
     {
         "type": "function",
@@ -161,6 +173,23 @@ SWIGGY_TOOLS = [
                     "query": {"type": "string", "description": "Product name, e.g. 'milk', 'bread', 'eggs'."},
                 },
                 "required": ["address_id", "query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "swiggy_get_go_to_items",
+            "description": (
+                "List the user's frequently reordered Instamart items. Use when they ask "
+                "for 'the usual' or want to restock without naming products."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "address_id": {"type": "string", "description": "Delivery address ID."},
+                },
+                "required": ["address_id"],
             },
         },
     },

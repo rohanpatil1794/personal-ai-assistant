@@ -159,10 +159,18 @@ class SwiggyIntegration(Integration):
                 status = self._swiggy.track_food_order(args["order_id"])
                 return {"tracking": status}
 
+            elif tool_name == "swiggy_get_food_orders":
+                orders = self._swiggy.get_food_orders()
+                return {"orders": orders}
+
             # --- Grocery ---
             elif tool_name == "swiggy_search_grocery":
                 products = self._swiggy.search_products(args["address_id"], args["query"])
                 return {"products": products}
+
+            elif tool_name == "swiggy_get_go_to_items":
+                items = self._swiggy.get_go_to_items(args["address_id"])
+                return {"items": items}
 
             elif tool_name == "swiggy_update_grocery_cart":
                 result = self._swiggy.update_grocery_cart(args["items"])
