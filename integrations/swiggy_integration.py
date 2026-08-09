@@ -24,6 +24,14 @@ class SwiggyIntegration(Integration):
     def get_pending_order(self) -> dict | None:
         return self._pending_order
 
+    def get_pending_order_type(self) -> str | None:
+        """Either 'food', 'grocery', or None when nothing awaits confirmation."""
+        return self._pending_order_type
+
+    def clear_pending_order(self) -> None:
+        self._pending_order = None
+        self._pending_order_type = None
+
     def dispatch(self, tool_name: str, args: dict) -> dict:
         try:
             # --- Shared ---
@@ -60,11 +68,10 @@ class SwiggyIntegration(Integration):
                 }
 
             elif tool_name == "swiggy_confirm_food_order":
-                if not self._pending_order:
+                if not self._pending_order or self._pending_order_type != "food":
                     return {"error": "No pending food order to confirm."}
                 result = self._swiggy.place_food_order()
-                self._pending_order = None
-                self._pending_order_type = None
+                self.clear_pending_order()
                 return {"success": True, "order": result}
 
             elif tool_name == "swiggy_track_food_order":
@@ -96,11 +103,10 @@ class SwiggyIntegration(Integration):
                 }
 
             elif tool_name == "swiggy_confirm_grocery_order":
-                if not self._pending_order:
+                if not self._pending_order or self._pending_order_type != "grocery":
                     return {"error": "No pending grocery order to confirm."}
                 result = self._swiggy.checkout_grocery()
-                self._pending_order = None
-                self._pending_order_type = None
+                self.clear_pending_order()
                 return {"success": True, "order": result}
 
             # --- Dineout ---

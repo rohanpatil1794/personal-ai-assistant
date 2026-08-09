@@ -41,7 +41,7 @@ Available HA entities:
 - For dine-out bookings, only book FREE reservations.
 - Payment is always Cash on Delivery (COD).
 - If you need any information before acting (address, quantity, device name), ask for it naturally — never assume or skip ahead.
-- When the user says "__confirm_order__", call swiggy_confirm_food_order or swiggy_confirm_grocery_order based on the active pending order.
+- Never call swiggy_confirm_food_order or swiggy_confirm_grocery_order yourself — order confirmation is handled for you. You will simply be told the outcome to relay.
 - When the user says "cancel the order", acknowledge warmly — no tool call needed.
 
 ## Calendar Rules
@@ -100,6 +100,34 @@ class ConversationManager:
             return None
         return swiggy.get_pending_order()
 
+    def _confirm_pending_order(self) -> str:
+        """
+        Check out the cart that is actually pending and return a plain-language
+        outcome for the LLM to phrase aloud.
+
+        The model is deliberately not asked which confirm tool to call — picking
+        wrong would place a real COD order against the other cart.
+        """
+        swiggy = self._registry.get_integration("swiggy")
+        if swiggy is None:
+            return "The order could not be confirmed because Swiggy is not connected. Tell the user."
+
+        order_type = swiggy.get_pending_order_type()
+        if order_type is None:
+            return "There was no pending order to confirm. Tell the user nothing was placed."
+
+        tool_name = "swiggy_confirm_food_order" if order_type == "food" else "swiggy_confirm_grocery_order"
+        log.info("conversation: confirming pending order", type=order_type, tool=tool_name)
+        result = self._registry.dispatch(tool_name, {})
+
+        if result.get("error"):
+            return f"The {order_type} order failed to go through: {result['error']}. Tell the user."
+        return (
+            f"The {order_type} order was placed successfully with cash on delivery. "
+            f"Details: {json.dumps(result.get('order', {}))[:400]}. "
+            "Confirm this to the user in one short sentence."
+        )
+
     def send(self, user_text: str) -> str:
         """Send a user message, handle tool calls, and return the final reply."""
         if not self._started:
@@ -115,8 +143,13 @@ class ConversationManager:
         if user_text.strip() == "cancel the order":
             swiggy = self._registry.get_integration("swiggy")
             if swiggy:
-                swiggy._pending_order = None
-                swiggy._pending_order_type = None
+                swiggy.clear_pending_order()
+
+        # Handle confirm sentinel deterministically. Which cart gets checked out is a
+        # real-money decision, so it is resolved from the recorded pending-order type
+        # rather than left to the model to pick the right confirm tool.
+        if user_text.strip() == "__confirm_order__":
+            user_text = self._confirm_pending_order()
 
         log.info("conversation: user input", text=user_text)
         try:
